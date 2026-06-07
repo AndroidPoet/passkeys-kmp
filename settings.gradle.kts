@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "passkeys-kmp"
 
 include(":passkeys")
+include(":sample:android")

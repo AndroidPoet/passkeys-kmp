@@ -24,7 +24,7 @@ import androidx.credentials.exceptions.publickeycredential.GetPublicKeyCredentia
 private const val DOM_MESSAGE =
     "DOM error from WebAuthn. Check your Digital Asset Links at /.well-known/assetlinks.json."
 
-internal fun CreateCredentialException.toPasskeyException(): PasskeyException =
+internal fun CreateCredentialException.toCreatePasskeyException(): PasskeyException =
     when (this) {
         is CreateCredentialCancellationException -> PasskeyException.UserCanceled(this)
         is CreateCredentialInterruptedException -> PasskeyException.Interrupted(this)
@@ -39,7 +39,7 @@ internal fun CreateCredentialException.toPasskeyException(): PasskeyException =
         else -> PasskeyException.Unexpected(this)
     }
 
-internal fun GetCredentialException.toPasskeyException(): PasskeyException =
+internal fun GetCredentialException.toGetPasskeyException(): PasskeyException =
     when (this) {
         is GetCredentialCancellationException -> PasskeyException.UserCanceled(this)
         is GetCredentialInterruptedException -> PasskeyException.Interrupted(this)

@@ -50,8 +50,8 @@ public class AndroidPasskeyClient : PasskeyClient {
 
     private fun Throwable.toPasskeyException(): PasskeyException =
         when (this) {
-            is CreateCredentialException -> toPasskeyException()
-            is GetCredentialException -> toPasskeyException()
+            is CreateCredentialException -> toCreatePasskeyException()
+            is GetCredentialException -> toGetPasskeyException()
             else -> PasskeyPayloadMapper.exception(this)
         }
 }
