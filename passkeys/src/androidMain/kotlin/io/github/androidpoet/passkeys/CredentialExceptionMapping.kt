@@ -32,6 +32,7 @@ internal fun CreateCredentialException.toCreatePasskeyException(): PasskeyExcept
         is CreatePublicKeyCredentialDomException -> PasskeyException.DomError(DOM_MESSAGE, this)
         is CreateCredentialNoCreateOptionException,
         is CreatePublicKeyCredentialException,
+        -> PasskeyException.DomError(DOM_MESSAGE, this)
         is CreateCredentialUnknownException,
         is CreateCredentialCustomException,
         is CreateCredentialProviderConfigurationException,
@@ -46,7 +47,7 @@ internal fun GetCredentialException.toGetPasskeyException(): PasskeyException =
         is GetCredentialUnsupportedException -> PasskeyException.Unsupported(this)
         is GetPublicKeyCredentialDomException -> PasskeyException.DomError(DOM_MESSAGE, this)
         is NoCredentialException -> PasskeyException.NoCredential(this)
-        is GetPublicKeyCredentialException,
+        is GetPublicKeyCredentialException -> PasskeyException.DomError(DOM_MESSAGE, this)
         is GetCredentialUnknownException,
         is GetCredentialCustomException,
         is GetCredentialProviderConfigurationException,
