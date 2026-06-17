@@ -97,8 +97,8 @@ class MainActivity : Activity() {
         status.text = "Calling Credential Manager create..."
         scope.launch {
             when (val result = passkeys.create(PasskeyCreationOptions(sampleRegistrationOptions))) {
-                is PasskeyResult.Success -> status.text = result.value.rawJson
-                is PasskeyResult.Failure -> status.text = "${result.error.message} (${result.error.code})"
+                is PasskeyResult.Success -> status.text = "✅ Passkey created successfully\n\n${result.value.rawJson}"
+                is PasskeyResult.Failure -> status.text = "❌ ${result.error.message} (${result.error.code})"
             }
         }
     }
@@ -111,8 +111,8 @@ class MainActivity : Activity() {
         status.text = "Calling Credential Manager authenticate..."
         scope.launch {
             when (val result = passkeys.authenticate(PasskeyAuthenticationOptions(sampleAuthenticationOptions))) {
-                is PasskeyResult.Success -> status.text = result.value.rawJson
-                is PasskeyResult.Failure -> status.text = "${result.error.message} (${result.error.code})"
+                is PasskeyResult.Success -> status.text = "✅ Login successful\n\n${result.value.rawJson}"
+                is PasskeyResult.Failure -> status.text = "❌ ${result.error.message} (${result.error.code})"
             }
         }
     }
@@ -142,7 +142,11 @@ class MainActivity : Activity() {
                     "displayName": "Sample User"
                   },
                   "pubKeyCredParams": [{ "type": "public-key", "alg": -7 }],
-                  "authenticatorSelection": { "userVerification": "preferred" }
+                  "authenticatorSelection": {
+                    "residentKey": "required",
+                    "requireResidentKey": true,
+                    "userVerification": "required"
+                  }
                 }
                 """.trimIndent()
 

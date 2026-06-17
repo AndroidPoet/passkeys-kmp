@@ -18,3 +18,5 @@ rootProject.name = "passkeys-kmp"
 
 include(":passkeys")
 include(":sample:android")
+include(":sample:web")
+include(":sample:composeApp")
