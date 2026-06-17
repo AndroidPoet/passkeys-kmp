@@ -20,22 +20,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import io.github.androidpoet.passkeys.PasskeyClient
 import io.github.androidpoet.passkeys.PasskeyResult
 import kotlinx.coroutines.launch
 
 /**
- * The entire sample UI — one composable shared by Android, iOS and desktop. Each
- * platform builds its own [PasskeyClient] (with the right presentation anchor)
- * and hands it in; everything below this point is identical across platforms.
+ * The entire sample — one composable shared by Android, iOS and desktop, with a
+ * single common call site. [rememberPasskeyClient] resolves the platform client
+ * (and its presentation anchor) under the hood, so nothing here is platform
+ * specific; each platform's entry point just calls `App()`.
  */
 @Suppress("ktlint:standard:function-naming")
 @Composable
-fun App(passkeys: PasskeyClient, platformName: String, rpId: String = RP_ID) {
+fun App(rpId: String = RP_ID) {
+    val passkeys = rememberPasskeyClient()
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             val scope = rememberCoroutineScope()
-            var status by remember { mutableStateOf("Ready on $platformName for $rpId.") }
+            var status by remember { mutableStateOf("Ready on ${platformName()} for $rpId.") }
             var busy by remember { mutableStateOf(false) }
 
             Column(

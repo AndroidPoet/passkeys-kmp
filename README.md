@@ -36,26 +36,33 @@ Real device verification requires domain association and backend challenge verif
 
 ## One codebase, every platform (`:sample:composeApp`)
 
-`:sample:composeApp` is a single Compose Multiplatform app whose entire UI lives
-in `commonMain` (`App.kt`). Each platform's entry point only constructs the right
-`PasskeyClient` and hands it in — everything else is shared:
-
-| Platform | Entry point | Client | Authenticator |
-| --- | --- | --- | --- |
-| Android | `MainActivity` | `AndroidPasskeyClient(activity)` | Credential Manager (fingerprint/face/PIN) |
-| iOS | `MainViewController()` | `IosPasskeyClient(window)` | AuthenticationServices (Face ID / Touch ID) |
-| macOS desktop (JVM) | `main()` | `JvmPasskeyClient { window.windowHandle }` | AuthenticationServices via native JNI (Touch ID) |
+`:sample:composeApp` is a single Compose Multiplatform app whose entire UI **and
+client setup** live in `commonMain` (`App.kt`). There is one common call site —
+`rememberPasskeyClient()` — so no platform client is ever named in shared code.
+Each platform's entry point just calls `App()`:
 
 ```kotlin
-// commonMain — the same composable runs on all three platforms.
+// commonMain — identical on every platform.
 @Composable
-fun App(passkeys: PasskeyClient, platformName: String, rpId: String = RP_ID) { /* … */ }
+fun App(rpId: String = RP_ID) {
+    val passkeys = rememberPasskeyClient()           // resolves the platform client + anchor
+    // ... passkeys.create(...) / passkeys.authenticate(...) -> PasskeyResult
+}
+
+// commonMain — the only platform seam, an expect/actual factory:
+@Composable expect fun rememberPasskeyClient(): PasskeyClient
 ```
 
-The shared client API (`create` / `authenticate` → `PasskeyResult`) means the
-ceremony call site is identical everywhere; only the platform anchor differs. The
-desktop target uses the same native AuthenticationServices ceremony as iOS/macOS,
-bridged into the JVM (see [JVM Desktop](#jvm-desktop-compose-desktop)).
+| Platform | Entry point | `rememberPasskeyClient()` resolves to | Authenticator |
+| --- | --- | --- | --- |
+| Android | `MainActivity` → `App()` | `AndroidPasskeyClient(activity)` | Credential Manager (fingerprint/face/PIN) |
+| iOS | `MainViewController()` → `App()` | `IosPasskeyClient(keyWindow)` | AuthenticationServices (Face ID / Touch ID) |
+| macOS desktop (JVM) | `main()` → `App()` | `JvmPasskeyClient()` | AuthenticationServices via native JNI (Touch ID) |
+
+The shared client API (`create` / `authenticate` → `PasskeyResult`) is identical
+everywhere; the desktop target uses the same native AuthenticationServices
+ceremony as iOS/macOS, bridged into the JVM (see
+[JVM Desktop](#jvm-desktop-compose-desktop)).
 
 ### Configuring & running the sample
 
