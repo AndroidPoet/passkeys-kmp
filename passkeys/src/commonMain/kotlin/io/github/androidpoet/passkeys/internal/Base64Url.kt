@@ -7,6 +7,9 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 internal fun String.normalizedBase64Url(): String = decodeBase64Url().let(Base64.UrlSafe::encode).trimEnd('=')
 
 @OptIn(ExperimentalEncodingApi::class)
+internal fun ByteArray.encodeBase64Url(): String = Base64.UrlSafe.encode(this).trimEnd('=')
+
+@OptIn(ExperimentalEncodingApi::class)
 internal fun String.decodeBase64Url(): ByteArray {
     val padded =
         replace('-', '+')

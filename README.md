@@ -23,7 +23,7 @@ The Android implementation is pinned to stable AndroidX Credentials `1.6.0`, inc
 - macOS: real passkey create/authenticate through AuthenticationServices (macOS 13+). Shares the iOS ceremony; the system Touch ID sheet is parented to your `NSWindow`.
 - Browser (Wasm): real passkey create/authenticate through `navigator.credentials`, using the browser's own WebAuthn JSON serialization (Baseline March 2025).
 - JVM desktop: no in-process authenticator exists; `JvmPasskeyClient` fails loud with `PasskeyException.Unsupported`. Use `PasskeyBrowserHandoff` to complete the ceremony in the system browser.
-- Linux: common models, payload normalization, and response helpers. No native passkey UI client yet.
+- Linux: `LinuxPasskeyClient` drives roaming **USB/NFC security keys** via libfido2. Linux has no OS platform/biometric authenticator, so platform passkeys and phone/hybrid are not available — those requests fail loud.
 
 Real device verification requires domain association and backend challenge verification. Use [docs/e2e-real-device.md](docs/e2e-real-device.md) before release.
 
@@ -136,6 +136,28 @@ PasskeyBrowserHandoff.open("https://your-rp.example/passkey/sign-in")
 
 Your web page completes the WebAuthn ceremony and returns the session to the
 desktop app (e.g. via a loopback redirect your app listens on).
+
+## Linux Usage
+
+Linux has no OS platform authenticator, so `LinuxPasskeyClient` supports
+**roaming security keys only** (USB/NFC) via libfido2:
+
+```kotlin
+val passkeys = LinuxPasskeyClient() // origin defaults to "https://<rpId>"; pass one to override
+
+when (val result = passkeys.authenticate(authenticationOptionsJson)) {
+    is PasskeyResult.Success -> { /* result.value.rawJson -> backend */ }
+    is PasskeyResult.Failure -> { /* e.g. PasskeyException.NoCredential when no key is attached */ }
+}
+
+// What's actually possible on Linux:
+LinuxPasskeyClient.capabilities // roaming=true, platform=false, hybrid=false
+```
+
+Requires the libfido2 shared library (`libfido2-dev` on Debian/Ubuntu,
+`libfido2-devel` on Fedora) and udev rules granting non-root access to the key.
+Platform/biometric and phone/hybrid passkeys are **not** available on Linux and
+fail with a typed `PasskeyException`.
 
 ## Verification
 

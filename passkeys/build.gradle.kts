@@ -27,7 +27,12 @@ kotlin {
     iosSimulatorArm64()
     macosX64()
     macosArm64()
-    linuxX64()
+    linuxX64 {
+        compilations.getByName("main").cinterops.create("libfido2") {
+            defFile(project.file("src/nativeInterop/cinterop/libfido2.def"))
+            packageName("fido2")
+        }
+    }
     wasmJs { browser() }
 
     sourceSets {

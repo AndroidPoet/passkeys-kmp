@@ -8,6 +8,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Linux** — `LinuxPasskeyClient` drives roaming USB/NFC FIDO2 security keys via
+  a libfido2 cinterop binding (registration assembles the CBOR `attestationObject`
+  from the authenticator's pieces; assertion unwraps libfido2's CBOR authenticator
+  data). Linux has no OS platform/biometric or hybrid authenticator, so those
+  requests fail with a typed `PasskeyException`; `LinuxPasskeyClient.capabilities`
+  reports what is supported. Requires the libfido2 shared library and udev rules.
 - **JVM desktop** — `JvmPasskeyClient` fails loud with
   `PasskeyException.Unsupported` (there is no in-process authenticator on JVM
   desktop), plus `PasskeyBrowserHandoff` to open the relying party page in the

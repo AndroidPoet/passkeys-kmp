@@ -1,0 +1,12 @@
+package = fido2
+headers = fido.h
+headerFilter = fido.h fido/**
+
+# libfido2 ships its public header as <fido.h>. Search the common install
+# locations so cinterop finds it whether the build host is Linux (apt
+# libfido2-dev -> /usr/include), Homebrew on Apple silicon, or /usr/local.
+compilerOpts = -I/usr/include -I/usr/local/include -I/opt/homebrew/include
+
+# Consumers (and test executables) link the system/distro libfido2 shared
+# library; the published klib itself is not linked.
+linkerOpts.linux_x64 = -L/usr/lib -L/usr/lib/x86_64-linux-gnu -lfido2
