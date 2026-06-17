@@ -1,5 +1,6 @@
 import io.github.androidpoet.passkeys.Configuration
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -9,13 +10,24 @@ plugins {
 }
 
 // Relying party + Apple bundle id are configurable so the sample carries no
-// real domain. Override per build, e.g.:
-//   ./gradlew :sample:composeApp:run -PpasskeysSampleRpId=your-domain.com
-//   ...                              -PpasskeysSampleBundleId=com.your.app
-val passkeysSampleRpId: Provider<String> =
-    providers.gradleProperty("passkeysSampleRpId").orElse("example.com")
-val passkeysSampleBundleId: String =
-    providers.gradleProperty("passkeysSampleBundleId").orElse("com.example.passkeys.sample").get()
+// real domain. Configure them — in precedence order:
+//   1. a -P flag:        ./gradlew :sample:composeApp:run -PpasskeysSampleRpId=your-domain.com
+//   2. local.properties: passkeysSampleRpId=your-domain.com   (gitignored — keeps your domain private)
+//   3. the built-in defaults below
+val localProperties =
+    Properties().apply {
+        val file = rootProject.file("local.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+
+fun sampleSetting(key: String, default: String): Provider<String> =
+    providers
+        .gradleProperty(key)
+        .orElse(providers.provider { localProperties.getProperty(key) })
+        .orElse(default)
+
+val passkeysSampleRpId: Provider<String> = sampleSetting("passkeysSampleRpId", "example.com")
+val passkeysSampleBundleId: String = sampleSetting("passkeysSampleBundleId", "com.example.passkeys.sample").get()
 
 // Generates SampleConfig.kt (commonMain) so the rpId is injected at build time
 // rather than hard-coded in tracked source.

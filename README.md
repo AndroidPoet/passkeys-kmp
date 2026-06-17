@@ -134,11 +134,19 @@ access. Platform and phone/hybrid passkeys fail with a typed `PasskeyException`.
 ## Sample
 
 `:sample:composeApp` is one Compose Multiplatform app — the whole UI lives in `commonMain`,
-each entry point is just `App()`. Supply your own domain:
+each entry point is just `App()`. Supply your own domain via a `-P` flag:
 
 ```sh
 ./gradlew :sample:composeApp:installDebug -PpasskeysSampleRpId=your-domain.com   # Android
 ./gradlew :sample:composeApp:run -PpasskeysSampleRpId=your-domain.com            # macOS desktop
+```
+
+…or, so you don't repeat it every build, put it in `local.properties` (gitignored, keeps your
+domain private):
+
+```properties
+passkeysSampleRpId=your-domain.com
+passkeysSampleBundleId=com.your.app
 ```
 
 A browser demo lives in `:sample:web`.
