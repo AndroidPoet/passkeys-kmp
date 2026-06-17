@@ -176,3 +176,28 @@ A browser demo lives in `:sample:web`.
 ./gradlew :passkeys:allTests spotlessCheck detekt apiCheck
 ./gradlew :passkeys:assemble :passkeys:publishToMavenLocal
 ```
+
+## Contributing
+
+Issues and PRs are welcome. Before opening a PR, run the gates:
+
+```sh
+./gradlew spotlessApply detekt apiCheck
+```
+
+`apiCheck` guards the public API — if you change it intentionally, regenerate the
+dump with `./gradlew apiDump` and commit it.
+
+## Find this useful?
+
+Give the repo a ⭐ — it helps others discover it.
+
+## License
+
+```
+MIT License
+
+Copyright (c) 2026 Ranbir Singh
+```
+
+See [LICENSE](LICENSE) for the full text.
