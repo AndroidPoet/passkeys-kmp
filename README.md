@@ -59,6 +59,19 @@ when (val result = passkeys.create(registrationOptionsJson)) {   // or .authenti
 | Windows 10 1903+ | Windows Hello / security key | `HWND` | — |
 | Linux | Roaming USB/NFC key only | — | `libfido2` + udev rules |
 
+<details>
+<summary><b>📸 See the native authenticator on each platform</b></summary>
+
+<br/>
+
+Same shared `create` call, each platform's own native authenticator UI:
+
+| Android — Credential Manager | macOS — Touch ID | Browser (Wasm) |
+| :---: | :---: | :---: |
+| <img src="art/screenshots/android.png" alt="Android Credential Manager passkey sheet" width="240"/> | <img src="art/screenshots/macos.png" alt="macOS Touch ID save-passkey dialog" width="320"/> | <img src="art/screenshots/web.png" alt="Browser passkey dialog" width="320"/> |
+
+</details>
+
 ## Domain setup
 
 A passkey is bound to your domain, so each platform needs proof you own it. Host these
