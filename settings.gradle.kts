@@ -17,6 +17,7 @@ dependencyResolutionManagement {
 rootProject.name = "passkeys-kmp"
 
 include(":passkeys")
+include(":passkeys-compose")
 include(":sample:android")
 include(":sample:web")
 include(":sample:composeApp")

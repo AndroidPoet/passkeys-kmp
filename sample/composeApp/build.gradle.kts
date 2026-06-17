@@ -57,6 +57,7 @@ kotlin {
             kotlin.srcDir(generateSampleConfig)
             dependencies {
                 implementation(project(":passkeys"))
+                implementation(project(":passkeys-compose"))
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)

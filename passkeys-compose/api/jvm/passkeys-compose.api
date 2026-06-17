@@ -1,0 +1,4 @@
+public final class io/github/androidpoet/passkeys/compose/RememberPasskeyClient_jvmKt {
+	public static final fun rememberPasskeyClient (Landroidx/compose/runtime/Composer;I)Lio/github/androidpoet/passkeys/PasskeyClient;
+}
+
