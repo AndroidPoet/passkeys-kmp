@@ -41,6 +41,8 @@ style:
 naming:
   FunctionNaming:
     active: true
+    # @Composable functions are PascalCase by convention.
+    ignoreAnnotated: ['Composable']
 
 exceptions:
   TooGenericExceptionCaught:

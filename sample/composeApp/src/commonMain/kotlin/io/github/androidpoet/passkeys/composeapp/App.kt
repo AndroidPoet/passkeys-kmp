@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.androidpoet.passkeys.PasskeyResult
+import io.github.androidpoet.passkeys.compose.rememberPasskeyClient
 import kotlinx.coroutines.launch
 
 /**
