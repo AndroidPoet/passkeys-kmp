@@ -47,14 +47,6 @@ when (val result = passkeys.create(registrationOptionsJson)) {   // or .authenti
 }
 ```
 
-Call it inside your Compose content (`setContent { App() }`, `ComposeUIViewController { App() }`,
-etc.) — it reads the anchor from the composition, so there's nothing to pass.
-
-> Not using Compose? Construct directly and pass the anchor yourself:
-> `AndroidPasskeyClient(activity)`, `IosPasskeyClient(uiWindow)`, `MacosPasskeyClient(nsWindow)`,
-> `JvmPasskeyClient { window.windowHandle }`, `WindowsPasskeyClient(hwnd)`,
-> `WasmJsPasskeyClient()`, `LinuxPasskeyClient()`.
-
 ## Platforms
 
 | Platform | Authenticator | Anchor (auto via Compose) | One-time setup |
