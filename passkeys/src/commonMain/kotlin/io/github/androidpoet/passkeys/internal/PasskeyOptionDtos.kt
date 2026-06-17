@@ -15,6 +15,7 @@ internal data class NativeCreationOptions(
 @Serializable
 internal data class NativeRelyingParty(
     val id: String,
+    val name: String? = null,
 )
 
 @Serializable

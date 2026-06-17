@@ -8,6 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Windows** — `WindowsPasskeyClient` drives the native Windows Hello passkey
+  experience via the OS WebAuthn API (`webauthn.dll`, Windows 10 1903+):
+  fingerprint / face / PIN for the platform authenticator, or a tapped USB/NFC
+  security key. Nothing is bundled — it links the OS-provided import library.
+  The system sheet is parented to a caller-supplied window handle (`HWND` as a
+  `Long`), falling back to the foreground/console window. Uses the ready-made
+  response JSON on newer Windows builds and otherwise assembles the WebAuthn
+  registration/assertion JSON from the native structs.
 - **Linux** — `LinuxPasskeyClient` drives roaming USB/NFC FIDO2 security keys via
   a libfido2 cinterop binding (registration assembles the CBOR `attestationObject`
   from the authenticator's pieces; assertion unwraps libfido2's CBOR authenticator

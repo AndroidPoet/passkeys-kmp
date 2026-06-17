@@ -1,0 +1,9 @@
+package = webauthn
+headers = webauthn_kn.h
+# Expose only the WebAuthn API; <windows.h> is parsed for the types it
+# references but its own declarations stay off the Kotlin surface.
+headerFilter = webauthn.h webauthn_kn.h
+
+# webauthn.dll ships with Windows 10 1903+; consumers/test executables link the
+# system import library. The published klib itself is not linked.
+linkerOpts.mingw_x64 = -lwebauthn

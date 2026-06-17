@@ -33,6 +33,15 @@ kotlin {
             packageName("fido2")
         }
     }
+    mingwX64 {
+        compilations.getByName("main").cinterops.create("webauthn") {
+            defFile(project.file("src/nativeInterop/cinterop/webauthn.def"))
+            packageName("webauthn")
+            // The official MS webauthn.h is vendored next to the .def; add that
+            // directory to the include path so the umbrella header resolves it.
+            includeDirs(project.file("src/nativeInterop/cinterop"))
+        }
+    }
     wasmJs { browser() }
 
     sourceSets {

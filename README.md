@@ -1,10 +1,10 @@
 # Passkeys KMP
 
-Kotlin Multiplatform passkeys SDK with common WebAuthn models and native passkey clients for Android and Apple platforms.
+Kotlin Multiplatform passkeys SDK with common WebAuthn models and native passkey clients for Android, Apple, Windows, Linux, browser (Wasm), and JVM desktop.
 
 ## Modules
 
-- `:passkeys` - common WebAuthn payload/result contracts plus Android and iOS passkey operations.
+- `:passkeys` - common WebAuthn payload/result contracts plus per-platform passkey operations (Android, iOS, macOS, Windows, Linux, browser/Wasm, JVM desktop).
 
 ## Install
 
@@ -22,6 +22,7 @@ The Android implementation is pinned to stable AndroidX Credentials `1.6.0`, inc
 - iOS: real passkey create/authenticate through AuthenticationServices.
 - macOS: real passkey create/authenticate through AuthenticationServices (macOS 13+). Shares the iOS ceremony; the system Touch ID sheet is parented to your `NSWindow`.
 - Browser (Wasm): real passkey create/authenticate through `navigator.credentials`, using the browser's own WebAuthn JSON serialization (Baseline March 2025).
+- Windows: `WindowsPasskeyClient` drives real Windows Hello (fingerprint / face / PIN) or a tapped USB/NFC security key through the OS WebAuthn API (`webauthn.dll`, Windows 10 1903+).
 - JVM desktop: no in-process authenticator exists; `JvmPasskeyClient` fails loud with `PasskeyException.Unsupported`. Use `PasskeyBrowserHandoff` to complete the ceremony in the system browser.
 - Linux: `LinuxPasskeyClient` drives roaming **USB/NFC security keys** via libfido2. Linux has no OS platform/biometric authenticator, so platform passkeys and phone/hybrid are not available — those requests fail loud.
 
@@ -119,6 +120,34 @@ JS boundary as JSON via `PublicKeyCredential.parseCreationOptionsFromJSON` /
 `parseRequestOptionsFromJSON` and `toJSON()`, so base64url ↔ `ArrayBuffer`
 conversion is handled by the browser. Browsers without those methods fail with
 `PasskeyException.Unsupported`.
+
+## Windows Usage
+
+```kotlin
+val passkeys = WindowsPasskeyClient(windowHandle) // HWND of your top-level window, as a Long
+
+when (val result = passkeys.authenticate(authenticationOptionsJson)) {
+    is PasskeyResult.Success -> {
+        val responseJson = result.value.rawJson
+        // Send responseJson to your backend for WebAuthn assertion verification.
+    }
+    is PasskeyResult.Failure -> {
+        // Inspect result.error.code and result.error.message.
+    }
+}
+```
+
+Backed by the OS WebAuthn API (`webauthn.dll`, shipped with Windows 10 1903+),
+so `create`/`authenticate` show the real Windows Hello sheet: fingerprint, face,
+or PIN for the platform authenticator, or a tapped USB/NFC security key. Nothing
+is bundled — the binding links the OS-provided import library.
+
+The system sheet must be parented to a window. Pass your top-level window handle
+(`HWND`, as a raw `Long`); when `0` it falls back to the foreground window and
+then the console window. The expected `origin` defaults to `https://<rpId>`;
+pass `origin` to override. On Windows builds whose WebAuthn API already returns a
+serialized response, that JSON is used directly; otherwise the WebAuthn
+registration/assertion JSON is assembled from the native structs.
 
 ## JVM Desktop
 

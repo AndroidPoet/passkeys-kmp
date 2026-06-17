@@ -1,5 +1,5 @@
 // Klib ABI Dump
-// Targets: [iosArm64, iosSimulatorArm64, iosX64, linuxX64, macosArm64, macosX64, wasmJs]
+// Targets: [iosArm64, iosSimulatorArm64, iosX64, linuxX64, macosArm64, macosX64, mingwX64, wasmJs]
 // Alias: ios => [iosArm64, iosSimulatorArm64, iosX64]
 // Alias: macos => [macosArm64, macosX64]
 // Rendering settings:
@@ -240,6 +240,14 @@ final class io.github.androidpoet.passkeys/LinuxPasskeyClient : io.github.androi
         final val capabilities // io.github.androidpoet.passkeys/LinuxPasskeyClient.Companion.capabilities|{}capabilities[0]
             final fun <get-capabilities>(): io.github.androidpoet.passkeys/LinuxPasskeyCapabilities // io.github.androidpoet.passkeys/LinuxPasskeyClient.Companion.capabilities.<get-capabilities>|<get-capabilities>(){}[0]
     }
+}
+
+// Targets: [mingwX64]
+final class io.github.androidpoet.passkeys/WindowsPasskeyClient : io.github.androidpoet.passkeys/PasskeyClient { // io.github.androidpoet.passkeys/WindowsPasskeyClient|null[0]
+    constructor <init>(kotlin/Long = ..., kotlin/String? = ...) // io.github.androidpoet.passkeys/WindowsPasskeyClient.<init>|<init>(kotlin.Long;kotlin.String?){}[0]
+
+    final suspend fun authenticate(io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyAuthenticationResponse> // io.github.androidpoet.passkeys/WindowsPasskeyClient.authenticate|authenticate(io.github.androidpoet.passkeys.models.PasskeyAuthenticationOptions){}[0]
+    final suspend fun create(io.github.androidpoet.passkeys.models/PasskeyCreationOptions): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyCreationResponse> // io.github.androidpoet.passkeys/WindowsPasskeyClient.create|create(io.github.androidpoet.passkeys.models.PasskeyCreationOptions){}[0]
 }
 
 // Targets: [wasmJs]
