@@ -14,6 +14,12 @@ kotlin {
     explicitApi()
     jvmToolchain(17)
 
+    // The Apple platform gate (ApplePasskeyPlatform) is an expect/actual object;
+    // opt in to the still-Beta multiplatform expect/actual classes feature.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidTarget { publishLibraryVariants("release") }
     jvm()
     iosX64()

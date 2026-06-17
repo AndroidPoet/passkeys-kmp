@@ -15,10 +15,8 @@ import platform.AuthenticationServices.ASAuthorizationPublicKeyCredentialAttachm
 import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.base64Encoding
-import platform.UIKit.UIDevice
 import platform.darwin.NSObject
 
-private const val ATTACHMENT_SUPPORT_MIN_OS_VERSION = "16.6"
 private const val PASSKEY_TYPE = "public-key"
 
 internal class PasskeyAuthorizationController {
@@ -224,7 +222,7 @@ internal class PasskeyAuthorizationController {
     }
 
     private fun ASAuthorizationPublicKeyCredentialAttachment.toWireValue(): String? {
-        if (!UIDevice.currentDevice.systemVersion.isSemanticVersionAtLeast(ATTACHMENT_SUPPORT_MIN_OS_VERSION)) {
+        if (!ApplePasskeyPlatform.supportsAttachmentReporting()) {
             return "platform"
         }
         return when (this) {

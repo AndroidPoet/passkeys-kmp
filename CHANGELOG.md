@@ -8,6 +8,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **macOS** — real passkey ceremonies via AuthenticationServices
+  (`MacosPasskeyClient`, macOS 13+). The iOS and macOS clients now share one
+  `ApplePasskeyClient` ceremony implementation; the only per-platform
+  differences are the presentation anchor (`NSWindow` vs `UIWindow`) and the
+  OS-version gates for the `largeBlob`/`prf` extensions (macOS 14/15+).
 - Repository foundation: `LICENSE` (MIT), this changelog, `.editorconfig`,
   Spotless (ktlint) formatting, detekt static analysis, Binary Compatibility
   Validator with a committed public-API dump, Kover coverage, Dokka API docs,

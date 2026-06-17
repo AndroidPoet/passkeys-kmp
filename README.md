@@ -20,7 +20,8 @@ The Android implementation is pinned to stable AndroidX Credentials `1.6.0`, inc
 
 - Android: real passkey create/authenticate through AndroidX Credential Manager.
 - iOS: real passkey create/authenticate through AuthenticationServices.
-- macOS, JVM, Linux, Wasm: common models, payload normalization, and response helpers. No native passkey UI client yet.
+- macOS: real passkey create/authenticate through AuthenticationServices (macOS 13+). Shares the iOS ceremony; the system Touch ID sheet is parented to your `NSWindow`.
+- JVM, Linux, Wasm: common models, payload normalization, and response helpers. No native passkey UI client yet.
 
 Real device verification requires domain association and backend challenge verification. Use [docs/e2e-real-device.md](docs/e2e-real-device.md) before release.
 
@@ -70,10 +71,28 @@ when (val result = passkeys.create(registrationOptionsJson)) {
 }
 ```
 
-Apple extension support:
+## macOS Usage
 
-- `largeBlob` registration/authentication is wired on iOS 17+.
-- `prf` registration/authentication is wired on iOS 18+.
+```kotlin
+val passkeys = MacosPasskeyClient(window) // an NSWindow to anchor the system sheet
+
+when (val result = passkeys.authenticate(authenticationOptionsJson)) {
+    is PasskeyResult.Success -> {
+        val responseJson = result.value.rawJson
+        // Send responseJson to your backend for WebAuthn assertion verification.
+    }
+    is PasskeyResult.Failure -> {
+        // Inspect result.error.code and result.error.message.
+    }
+}
+```
+
+macOS 13 (Ventura)+ and an Associated Domains entitlement (`webcredentials:your-domain.com`) are required. `create` works the same way as on iOS.
+
+Apple extension support (iOS and macOS share one implementation):
+
+- `largeBlob` registration/authentication is wired on iOS 17+ / macOS 14+.
+- `prf` registration/authentication is wired on iOS 18+ / macOS 15+.
 - Unsupported OS versions fail with `PasskeyException.Unsupported` before native UI is shown.
 - Requested extension outputs are preserved in `clientExtensionResultsJson` and in `rawJson.clientExtensionResults`.
 
