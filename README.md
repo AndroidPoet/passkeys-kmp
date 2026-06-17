@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-One common <b>passkeys (WebAuthn)</b> API for Kotlin Multiplatform, backed by real native
+One common <b>passkeys</b> API for Kotlin Multiplatform, backed by real native
 authenticators on Android, iOS, macOS, Windows, Linux, browser (Wasm), and JVM/Compose Desktop.
 </p>
 
