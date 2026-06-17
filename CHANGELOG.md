@@ -8,6 +8,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **JVM desktop** — `JvmPasskeyClient` fails loud with
+  `PasskeyException.Unsupported` (there is no in-process authenticator on JVM
+  desktop), plus `PasskeyBrowserHandoff` to open the relying party page in the
+  system browser as the supported desktop flow.
 - **Browser (Wasm)** — real passkey ceremonies via `navigator.credentials`
   (`WasmJsPasskeyClient`). Uses the browser's own WebAuthn JSON serialization
   (`parseCreationOptionsFromJSON` / `parseRequestOptionsFromJSON` / `toJSON`,

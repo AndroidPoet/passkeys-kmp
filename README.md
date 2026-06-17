@@ -22,7 +22,8 @@ The Android implementation is pinned to stable AndroidX Credentials `1.6.0`, inc
 - iOS: real passkey create/authenticate through AuthenticationServices.
 - macOS: real passkey create/authenticate through AuthenticationServices (macOS 13+). Shares the iOS ceremony; the system Touch ID sheet is parented to your `NSWindow`.
 - Browser (Wasm): real passkey create/authenticate through `navigator.credentials`, using the browser's own WebAuthn JSON serialization (Baseline March 2025).
-- JVM, Linux: common models, payload normalization, and response helpers. No native passkey UI client yet.
+- JVM desktop: no in-process authenticator exists; `JvmPasskeyClient` fails loud with `PasskeyException.Unsupported`. Use `PasskeyBrowserHandoff` to complete the ceremony in the system browser.
+- Linux: common models, payload normalization, and response helpers. No native passkey UI client yet.
 
 Real device verification requires domain association and backend challenge verification. Use [docs/e2e-real-device.md](docs/e2e-real-device.md) before release.
 
@@ -118,6 +119,23 @@ JS boundary as JSON via `PublicKeyCredential.parseCreationOptionsFromJSON` /
 `parseRequestOptionsFromJSON` and `toJSON()`, so base64url ↔ `ArrayBuffer`
 conversion is handled by the browser. Browsers without those methods fail with
 `PasskeyException.Unsupported`.
+
+## JVM Desktop
+
+A plain JVM desktop app cannot drive a platform authenticator in-process without
+per-OS native bindings, and macOS cannot present its passkey sheet headlessly,
+so `JvmPasskeyClient` fails loud:
+
+```kotlin
+val passkeys = JvmPasskeyClient()
+// create()/authenticate() always return PasskeyResult.Failure(Unsupported)
+
+// Supported pattern — hand off to the system browser, which has a real authenticator:
+PasskeyBrowserHandoff.open("https://your-rp.example/passkey/sign-in")
+```
+
+Your web page completes the WebAuthn ceremony and returns the session to the
+desktop app (e.g. via a loopback redirect your app listens on).
 
 ## Verification
 
