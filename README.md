@@ -82,6 +82,65 @@ construct the client directly you must pass it yourself.
 WebAuthn JSON (or a `{ "publicKey": … }` wrapper). Responses are returned as
 `rawJson` for your server to verify.
 
+## Verify on your server
+
+A passkey is only trustworthy after **your backend** validates it. This SDK runs
+the device-side ceremony and hands you the WebAuthn response — verification is
+always server-side. The full flow is a round trip with your relying party (RP):
+
+```
+        ┌────────── 1. begin ──────────┐
+ server │  generate a random challenge │  (store it against the user/session)
+        │  + options JSON              │
+        └──────────────┬───────────────┘
+                       │ options JSON
+                       ▼
+ device   passkeys.create(json) / passkeys.authenticate(json)   ← this SDK
+                       │ result.value.rawJson
+                       ▼
+        ┌──────────── 2. finish ───────────────┐
+ server │  verify challenge, origin, RP ID,    │  (a WebAuthn server library)
+        │  signature & sign-count, then store  │
+        └──────────────────────────────────────┘
+```
+
+**1. Begin** — your server creates the options (with a fresh, single-use
+`challenge`) and returns them; pass that JSON straight into `create` /
+`authenticate`.
+
+**2. Finish** — send the result back and verify it server-side:
+
+```kotlin
+when (val result = passkeys.create(registrationOptionsJson)) {
+    is PasskeyResult.Success -> {
+        // POST the raw WebAuthn JSON to your backend for verification + storage
+        api.verifyRegistration(result.value.rawJson)
+    }
+    is PasskeyResult.Failure -> handle(result.error)
+}
+```
+
+Your backend must check, **on every ceremony**:
+
+| Check | Registration (`create`) | Authentication (`authenticate`) |
+| --- | --- | --- |
+| `challenge` matches the one you issued (and hasn't been used) | ✓ | ✓ |
+| `origin` in `clientDataJson` is your app/site | ✓ | ✓ |
+| RP ID hash in the authenticator data matches your `rpId` | ✓ | ✓ |
+| attestation / public key is parsed and the credential **stored** | ✓ | — |
+| `signature` verifies against the **stored** public key | — | ✓ |
+| sign-count increases (or is 0) — guards against cloned authenticators | — | ✓ |
+
+Don't write your own verifier — use a maintained WebAuthn server library, e.g.
+**[java-webauthn-server](https://github.com/Yubico/java-webauthn-server)** or
+**[webauthn4j](https://github.com/webauthn4j/webauthn4j)** (JVM/Kotlin backends),
+**[SimpleWebAuthn](https://simplewebauthn.dev/)** (Node), or
+**[py_webauthn](https://github.com/duo-labs/py_webauthn)** (Python). Feed it
+`result.value.rawJson` — it carries every field these libraries expect
+(`clientDataJson`, `attestationObject` / `authenticatorData`, `signature`,
+`userHandle`, `transports`, and `clientExtensionResultsJson` for extension
+outputs).
+
 <details>
 <summary><b>JVM / Compose Desktop — native macOS passkeys</b></summary>
 
@@ -141,7 +200,7 @@ bundle id. For iOS, set the `webcredentials:` domain in
 `assetlinks.json` (Android) and `apple-app-site-association` (Apple) under
 `/.well-known/` on your domain. A browser demo lives in `:sample:web`.
 
-## Verification
+## Build & test the library
 
 ```sh
 ./gradlew :passkeys:allTests :passkeys:testDebugUnitTest
