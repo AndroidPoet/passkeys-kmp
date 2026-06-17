@@ -124,9 +124,9 @@ class MainActivity : Activity() {
         Rebuild with:
         ./gradlew :sample:android:installDebug -PpasskeysSampleRpId=your-domain.com
 
-        Publish this DAL entry on that domain for this debug build:
+        Publish a Digital Asset Links entry on that domain for your build:
         package: io.github.androidpoet.passkeys.sample
-        sha256: C7:0E:B2:F4:D2:E1:0D:0D:AF:5F:4B:89:07:64:A3:1C:D6:FB:0E:41:33:96:5D:A2:A2:E5:BE:51:33:43:09:76
+        sha256: <your signing cert SHA-256 — run `./gradlew :sample:android:signingReport`>
         """.trimIndent()
 
     private companion object {
