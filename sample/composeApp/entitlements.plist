@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Authorizes passkey ceremonies for your relying party; validated at runtime
+         against https://YOUR-DOMAIN/.well-known/apple-app-site-association.
+         Replace example.com with your own domain. -->
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+        <string>webcredentials:example.com</string>
+    </array>
+
+    <!-- Required for the embedded JVM under the hardened runtime, and to load the
+         bundled (separately built) libPasskeysNative.dylib extracted at runtime. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

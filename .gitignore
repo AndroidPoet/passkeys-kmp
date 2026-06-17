@@ -9,3 +9,10 @@ local.properties
 *.iml
 *.keystore
 *.jks
+
+# Local passkey test signing key (each dev generates their own; fingerprint goes in assetlinks.json)
+sample/android/passkeys-test.keystore
+
+# xcodegen-generated Xcode project (regenerate from project.yml)
+sample/composeApp/iosApp/*.xcodeproj/
+sample/composeApp/iosApp/**/xcuserdata/

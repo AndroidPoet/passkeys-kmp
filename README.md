@@ -1,4 +1,10 @@
-# Passkeys KMP
+<p align="center">
+  <img src="art/passkeys-kmp.png" alt="passkeys-kmp — Simple. Secure. Passwordless." width="560"/>
+</p>
+
+<h1 align="center">Passkeys KMP</h1>
+
+<p align="center"><b>Simple. Secure. Passwordless.</b></p>
 
 Kotlin Multiplatform passkeys SDK with common WebAuthn models and native passkey clients for Android, Apple, Windows, Linux, browser (Wasm), and JVM desktop.
 
@@ -23,10 +29,63 @@ The Android implementation is pinned to stable AndroidX Credentials `1.6.0`, inc
 - macOS: real passkey create/authenticate through AuthenticationServices (macOS 13+). Shares the iOS ceremony; the system Touch ID sheet is parented to your `NSWindow`.
 - Browser (Wasm): real passkey create/authenticate through `navigator.credentials`, using the browser's own WebAuthn JSON serialization (Baseline March 2025).
 - Windows: `WindowsPasskeyClient` drives real Windows Hello (fingerprint / face / PIN) or a tapped USB/NFC security key through the OS WebAuthn API (`webauthn.dll`, Windows 10 1903+).
-- JVM desktop: no in-process authenticator exists; `JvmPasskeyClient` fails loud with `PasskeyException.Unsupported`. Use `PasskeyBrowserHandoff` to complete the ceremony in the system browser.
+- JVM desktop (Compose Desktop): on **macOS**, `JvmPasskeyClient` drives the real Touch ID / saved-passkey sheet through a bundled native backend (a Swift + JNI bridge over AuthenticationServices). On Windows/Linux it fails loud — use `PasskeyBrowserHandoff` there.
 - Linux: `LinuxPasskeyClient` drives roaming **USB/NFC security keys** via libfido2. Linux has no OS platform/biometric authenticator, so platform passkeys and phone/hybrid are not available — those requests fail loud.
 
 Real device verification requires domain association and backend challenge verification. Use [docs/e2e-real-device.md](docs/e2e-real-device.md) before release.
+
+## One codebase, every platform (`:sample:composeApp`)
+
+`:sample:composeApp` is a single Compose Multiplatform app whose entire UI **and
+client setup** live in `commonMain` (`App.kt`). There is one common call site —
+`rememberPasskeyClient()` — so no platform client is ever named in shared code.
+Each platform's entry point just calls `App()`:
+
+```kotlin
+// commonMain — identical on every platform.
+@Composable
+fun App(rpId: String = RP_ID) {
+    val passkeys = rememberPasskeyClient()           // resolves the platform client + anchor
+    // ... passkeys.create(...) / passkeys.authenticate(...) -> PasskeyResult
+}
+
+// commonMain — the only platform seam, an expect/actual factory:
+@Composable expect fun rememberPasskeyClient(): PasskeyClient
+```
+
+| Platform | Entry point | `rememberPasskeyClient()` resolves to | Authenticator |
+| --- | --- | --- | --- |
+| Android | `MainActivity` → `App()` | `AndroidPasskeyClient(activity)` | Credential Manager (fingerprint/face/PIN) |
+| iOS | `MainViewController()` → `App()` | `IosPasskeyClient(keyWindow)` | AuthenticationServices (Face ID / Touch ID) |
+| macOS desktop (JVM) | `main()` → `App()` | `JvmPasskeyClient()` | AuthenticationServices via native JNI (Touch ID) |
+
+The shared client API (`create` / `authenticate` → `PasskeyResult`) is identical
+everywhere; the desktop target uses the same native AuthenticationServices
+ceremony as iOS/macOS, bridged into the JVM (see
+[JVM Desktop](#jvm-desktop-compose-desktop)).
+
+### Configuring & running the sample
+
+The sample ships **no real domain or bundle id** — supply your own:
+
+```sh
+# Android (installs to a connected certified device/emulator)
+./gradlew :sample:composeApp:installDebug -PpasskeysSampleRpId=your-domain.com
+
+# macOS desktop (run unsigned to see the UI; create/authenticate need a signed .app)
+./gradlew :sample:composeApp:run -PpasskeysSampleRpId=your-domain.com
+
+# Package the macOS .app, then sign with your Associated Domains entitlement + profile
+./gradlew :sample:composeApp:createDistributable \
+  -PpasskeysSampleRpId=your-domain.com -PpasskeysSampleBundleId=com.your.app
+```
+
+`passkeysSampleRpId` is injected into `commonMain` at build time (generated
+`SampleConfig.kt`); `passkeysSampleBundleId` sets the macOS bundle id. For iOS,
+edit `sample/composeApp/iosApp/iosApp/iosApp.entitlements` (the
+`webcredentials:` domain) and pass `PRODUCT_BUNDLE_IDENTIFIER` / `DEVELOPMENT_TEAM`
+to `xcodebuild`. Your relying party must publish matching `assetlinks.json`
+(Android) and `apple-app-site-association` (Apple) under `/.well-known/`.
 
 ## Android Usage
 
@@ -149,22 +208,39 @@ pass `origin` to override. On Windows builds whose WebAuthn API already returns 
 serialized response, that JSON is used directly; otherwise the WebAuthn
 registration/assertion JSON is assembled from the native structs.
 
-## JVM Desktop
+## JVM Desktop (Compose Desktop)
 
-A plain JVM desktop app cannot drive a platform authenticator in-process without
-per-OS native bindings, and macOS cannot present its passkey sheet headlessly,
-so `JvmPasskeyClient` fails loud:
+On **macOS**, `JvmPasskeyClient` drives the *real* platform authenticator
+(Touch ID and iCloud-Keychain passkeys) from the JVM. It loads a bundled native
+backend — `libPasskeysNative.dylib`, a Swift + JNI shim over
+`AuthenticationServices`, built from `passkeys/src/jvmMain/native/macos` — so no
+browser hand-off is needed:
 
 ```kotlin
-val passkeys = JvmPasskeyClient()
-// create()/authenticate() always return PasskeyResult.Failure(Unsupported)
+// Anchor the system sheet to your Compose window.
+val passkeys = JvmPasskeyClient(windowHandle = { window.windowHandle })
 
-// Supported pattern — hand off to the system browser, which has a real authenticator:
-PasskeyBrowserHandoff.open("https://your-rp.example/passkey/sign-in")
+when (val result = passkeys.create(registrationOptionsJson)) {
+    is PasskeyResult.Success -> { /* result.value.rawJson -> backend */ }
+    is PasskeyResult.Failure -> { /* result.error.code / message */ }
+}
 ```
 
-Your web page completes the WebAuthn ceremony and returns the session to the
-desktop app (e.g. via a loopback redirect your app listens on).
+> **macOS packaging requirement.** A passkey ceremony only runs from a **signed
+> `.app`** carrying the `com.apple.developer.associated-domains`
+> (`webcredentials:<rpId>`) entitlement — the system refuses to launch an
+> unsigned/unentitled process (`spawn failed`). Because that entitlement is
+> *restricted*, the signature must also embed a provisioning profile that grants
+> it for your App ID. A bare `java -jar` from the terminal will not work; build,
+> entitle, and sign the Compose Desktop `.app` (see the sample below).
+
+On **Windows/Linux**, or on macOS when the native backend cannot load, both
+ceremonies fail loud with `PasskeyException.Unsupported` — hand off to the system
+browser instead:
+
+```kotlin
+PasskeyBrowserHandoff.open("https://your-rp.example/passkey/sign-in")
+```
 
 ## Linux Usage
 
