@@ -6,7 +6,9 @@ public data class PasskeyCreationOptions(
     public val isConditionalCreateRequest: Boolean = false,
 )
 
-public data class PasskeyAuthenticationOptions(public val requestJson: String)
+public data class PasskeyAuthenticationOptions(
+    public val requestJson: String,
+)
 
 public data class PasskeyCreationResponse(
     public val id: String,

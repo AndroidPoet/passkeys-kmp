@@ -1,18 +1,19 @@
 package io.github.androidpoet.passkeys
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertIs
+import io.github.androidpoet.passkeys.models.PasskeyAuthenticationResponse
+import io.github.androidpoet.passkeys.models.PasskeyCreationOptions
+import io.github.androidpoet.passkeys.models.PasskeyCreationResponse
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import io.github.androidpoet.passkeys.models.PasskeyAuthenticationResponse
-import io.github.androidpoet.passkeys.models.PasskeyCreationOptions
-import io.github.androidpoet.passkeys.models.PasskeyCreationResponse
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class AndroidPasskeyClientTest {
-    private val creationResponseJson = """
+    private val creationResponseJson =
+        """
         {
           "id": "credential-id",
           "rawId": "credential-id",
@@ -24,9 +25,10 @@ class AndroidPasskeyClientTest {
             "transports": ["internal"]
           }
         }
-    """.trimIndent()
+        """.trimIndent()
 
-    private val authenticationResponseJson = """
+    private val authenticationResponseJson =
+        """
         {
           "id": "credential-id",
           "rawId": "credential-id",
@@ -38,110 +40,127 @@ class AndroidPasskeyClientTest {
             "userHandle": "user"
           }
         }
-    """.trimIndent()
-
-    @Test
-    fun test_create_whenProviderSucceeds_returnsParsedCreationResponse() = runTest {
-        val provider = FakeAndroidCredentialProvider(createResponse = creationResponseJson)
-        val client = AndroidPasskeyClient(provider)
-        val requestJson = """
-            {
-              "publicKey": {
-                "challenge": "aGVsbG8=",
-                "rp": { "id": "example.com", "name": "Example" },
-                "user": { "id": "dXNlci0x", "name": "user@example.com", "displayName": "User" },
-                "pubKeyCredParams": [{ "type": "public-key", "alg": -7 }]
-              }
-            }
         """.trimIndent()
 
-        val result = client.create(requestJson)
+    @Test
+    fun test_create_whenProviderSucceeds_returnsParsedCreationResponse() =
+        runTest {
+            val provider = FakeAndroidCredentialProvider(createResponse = creationResponseJson)
+            val client = AndroidPasskeyClient(provider)
+            val requestJson =
+                """
+                {
+                  "publicKey": {
+                    "challenge": "aGVsbG8=",
+                    "rp": { "id": "example.com", "name": "Example" },
+                    "user": { "id": "dXNlci0x", "name": "user@example.com", "displayName": "User" },
+                    "pubKeyCredParams": [{ "type": "public-key", "alg": -7 }]
+                  }
+                }
+                """.trimIndent()
 
-        val success = assertIs<PasskeyResult.Success<PasskeyCreationResponse>>(result)
-        assertEquals("credential-id", success.value.id)
-        val forwarded = Json.parseToJsonElement(provider.receivedCreateRequestJson).jsonObject
-        assertEquals("aGVsbG8", forwarded["challenge"]?.jsonPrimitive?.content)
-        assertEquals("dXNlci0x", forwarded["user"]?.jsonObject?.get("id")?.jsonPrimitive?.content)
-    }
+            val result = client.create(requestJson)
+
+            val success = assertIs<PasskeyResult.Success<PasskeyCreationResponse>>(result)
+            assertEquals("credential-id", success.value.id)
+            val forwarded = Json.parseToJsonElement(provider.receivedCreateRequestJson).jsonObject
+            assertEquals("aGVsbG8", forwarded["challenge"]?.jsonPrimitive?.content)
+            assertEquals(
+                "dXNlci0x",
+                forwarded["user"]
+                    ?.jsonObject
+                    ?.get("id")
+                    ?.jsonPrimitive
+                    ?.content,
+            )
+        }
 
     @Test
-    fun test_create_whenOptionsSet_forwardsAndroidCredentialFlags() = runTest {
-        val provider = FakeAndroidCredentialProvider(createResponse = creationResponseJson)
-        val client = AndroidPasskeyClient(provider)
-        val requestJson = """
-            {
-              "challenge": "aGVsbG8",
-              "rp": { "id": "example.com", "name": "Example" },
-              "user": { "id": "dXNlci0x", "name": "user@example.com" },
-              "pubKeyCredParams": [{ "type": "public-key", "alg": -7 }]
-            }
-        """.trimIndent()
-
-        client.create(
-            PasskeyCreationOptions(
-                requestJson = requestJson,
-                preferImmediatelyAvailableCredentials = true,
-                isConditionalCreateRequest = true,
-            ),
-        )
-
-        assertEquals(true, provider.receivedPreferImmediatelyAvailableCredentials)
-        assertEquals(true, provider.receivedIsConditionalCreateRequest)
-    }
-
-    @Test
-    fun test_authenticate_whenProviderSucceeds_returnsParsedAuthenticationResponse() = runTest {
-        val provider = FakeAndroidCredentialProvider(authenticateResponse = authenticationResponseJson)
-        val client = AndroidPasskeyClient(provider)
-        val requestJson = """
-            {
-              "publicKey": {
-                "challenge": "aGVsbG8=",
-                "rpId": "example.com",
-                "allowCredentials": [{ "id": "Y3JlZC0x", "type": "public-key" }],
-                "userVerification": "preferred"
-              }
-            }
-        """.trimIndent()
-
-        val result = client.authenticate(requestJson)
-
-        val success = assertIs<PasskeyResult.Success<PasskeyAuthenticationResponse>>(result)
-        assertEquals("signature", success.value.signature)
-        val forwarded = Json.parseToJsonElement(provider.receivedAuthenticateRequestJson).jsonObject
-        assertEquals("aGVsbG8", forwarded["challenge"]?.jsonPrimitive?.content)
-        assertEquals("example.com", forwarded["rpId"]?.jsonPrimitive?.content)
-    }
-
-    @Test
-    fun test_create_whenPayloadMalformed_returnsInvalidPayloadFailure() = runTest {
-        val client = AndroidPasskeyClient(FakeAndroidCredentialProvider())
-
-        val result = client.create("{")
-
-        val failure = assertIs<PasskeyResult.Failure>(result)
-        assertIs<PasskeyException.InvalidPayload>(failure.error)
-    }
-
-    @Test
-    fun test_authenticate_whenProviderFails_returnsProviderFailure() = runTest {
-        val client = AndroidPasskeyClient(
-            FakeAndroidCredentialProvider(authenticateError = PasskeyException.NoCredential()),
-        )
-
-        val result = client.authenticate(
-            """
+    fun test_create_whenOptionsSet_forwardsAndroidCredentialFlags() =
+        runTest {
+            val provider = FakeAndroidCredentialProvider(createResponse = creationResponseJson)
+            val client = AndroidPasskeyClient(provider)
+            val requestJson =
+                """
                 {
                   "challenge": "aGVsbG8",
-                  "rpId": "example.com",
-                  "allowCredentials": []
+                  "rp": { "id": "example.com", "name": "Example" },
+                  "user": { "id": "dXNlci0x", "name": "user@example.com" },
+                  "pubKeyCredParams": [{ "type": "public-key", "alg": -7 }]
                 }
-            """.trimIndent(),
-        )
+                """.trimIndent()
 
-        val failure = assertIs<PasskeyResult.Failure>(result)
-        assertIs<PasskeyException.NoCredential>(failure.error)
-    }
+            client.create(
+                PasskeyCreationOptions(
+                    requestJson = requestJson,
+                    preferImmediatelyAvailableCredentials = true,
+                    isConditionalCreateRequest = true,
+                ),
+            )
+
+            assertEquals(true, provider.receivedPreferImmediatelyAvailableCredentials)
+            assertEquals(true, provider.receivedIsConditionalCreateRequest)
+        }
+
+    @Test
+    fun test_authenticate_whenProviderSucceeds_returnsParsedAuthenticationResponse() =
+        runTest {
+            val provider = FakeAndroidCredentialProvider(authenticateResponse = authenticationResponseJson)
+            val client = AndroidPasskeyClient(provider)
+            val requestJson =
+                """
+                {
+                  "publicKey": {
+                    "challenge": "aGVsbG8=",
+                    "rpId": "example.com",
+                    "allowCredentials": [{ "id": "Y3JlZC0x", "type": "public-key" }],
+                    "userVerification": "preferred"
+                  }
+                }
+                """.trimIndent()
+
+            val result = client.authenticate(requestJson)
+
+            val success = assertIs<PasskeyResult.Success<PasskeyAuthenticationResponse>>(result)
+            assertEquals("signature", success.value.signature)
+            val forwarded = Json.parseToJsonElement(provider.receivedAuthenticateRequestJson).jsonObject
+            assertEquals("aGVsbG8", forwarded["challenge"]?.jsonPrimitive?.content)
+            assertEquals("example.com", forwarded["rpId"]?.jsonPrimitive?.content)
+        }
+
+    @Test
+    fun test_create_whenPayloadMalformed_returnsInvalidPayloadFailure() =
+        runTest {
+            val client = AndroidPasskeyClient(FakeAndroidCredentialProvider())
+
+            val result = client.create("{")
+
+            val failure = assertIs<PasskeyResult.Failure>(result)
+            assertIs<PasskeyException.InvalidPayload>(failure.error)
+        }
+
+    @Test
+    fun test_authenticate_whenProviderFails_returnsProviderFailure() =
+        runTest {
+            val client =
+                AndroidPasskeyClient(
+                    FakeAndroidCredentialProvider(authenticateError = PasskeyException.NoCredential()),
+                )
+
+            val result =
+                client.authenticate(
+                    """
+                    {
+                      "challenge": "aGVsbG8",
+                      "rpId": "example.com",
+                      "allowCredentials": []
+                    }
+                    """.trimIndent(),
+                )
+
+            val failure = assertIs<PasskeyResult.Failure>(result)
+            assertIs<PasskeyException.NoCredential>(failure.error)
+        }
 }
 
 private class FakeAndroidCredentialProvider(

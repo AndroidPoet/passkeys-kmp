@@ -1,17 +1,18 @@
 package io.github.androidpoet.passkeys.internal
 
 import io.github.androidpoet.passkeys.PasskeyException
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class PasskeyPayloadMapperTest {
     @Test
     fun test_creationRequestJson_whenWrappedPublicKey_normalizesChallengeAndUserId() {
-        val requestJson = """
+        val requestJson =
+            """
             {
               "publicKey": {
                 "challenge": "aGVsbG8=",
@@ -21,18 +22,26 @@ class PasskeyPayloadMapperTest {
                 "authenticatorSelection": { "userVerification": "preferred" }
               }
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val normalized = PasskeyPayloadMapper.creationRequestJson(requestJson)
 
         val root = Json.parseToJsonElement(normalized).jsonObject
         assertEquals("aGVsbG8", root["challenge"]?.jsonPrimitive?.content)
-        assertEquals("dXNlci0x", root["user"]?.jsonObject?.get("id")?.jsonPrimitive?.content)
+        assertEquals(
+            "dXNlci0x",
+            root["user"]
+                ?.jsonObject
+                ?.get("id")
+                ?.jsonPrimitive
+                ?.content,
+        )
     }
 
     @Test
     fun test_authenticationRequestJson_whenWrappedPublicKey_unwrapsCredentialOptions() {
-        val requestJson = """
+        val requestJson =
+            """
             {
               "publicKey": {
                 "challenge": "aGVsbG8=",
@@ -41,7 +50,7 @@ class PasskeyPayloadMapperTest {
                 "userVerification": "preferred"
               }
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val normalized = PasskeyPayloadMapper.authenticationRequestJson(requestJson)
 
@@ -52,7 +61,8 @@ class PasskeyPayloadMapperTest {
 
     @Test
     fun test_nativeCreationOptions_whenWrappedPublicKey_extractsIosRequiredFields() {
-        val requestJson = """
+        val requestJson =
+            """
             {
               "publicKey": {
                 "challenge": "aGVsbG8=",
@@ -67,7 +77,7 @@ class PasskeyPayloadMapperTest {
                 }
               }
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val options = PasskeyPayloadMapper.nativeCreationOptions(requestJson)
 
@@ -79,13 +89,26 @@ class PasskeyPayloadMapperTest {
         assertEquals("none", options.attestation)
         assertEquals("required", options.authenticatorSelection?.userVerification)
         assertEquals("required", options.extensions?.largeBlob?.support)
-        assertEquals("c2FsdC0x", options.extensions?.prf?.eval?.first)
-        assertEquals("c2FsdC0y", options.extensions?.prf?.eval?.second)
+        assertEquals(
+            "c2FsdC0x",
+            options.extensions
+                ?.prf
+                ?.eval
+                ?.first,
+        )
+        assertEquals(
+            "c2FsdC0y",
+            options.extensions
+                ?.prf
+                ?.eval
+                ?.second,
+        )
     }
 
     @Test
     fun test_nativeAuthenticationOptions_whenDirectPayload_extractsIosRequiredFields() {
-        val requestJson = """
+        val requestJson =
+            """
             {
               "challenge": "aGVsbG8=",
               "rpId": "example.com",
@@ -98,7 +121,7 @@ class PasskeyPayloadMapperTest {
                 "prf": { "eval": { "first": "c2FsdC0x" } }
               }
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val options = PasskeyPayloadMapper.nativeAuthenticationOptions(requestJson)
 
@@ -107,12 +130,19 @@ class PasskeyPayloadMapperTest {
         assertEquals("Y3JlZC0x", options.allowCredentials.single().id)
         assertEquals("preferred", options.userVerification)
         assertEquals("YmxvYi12YWx1ZQ", options.extensions?.largeBlob?.write)
-        assertEquals("c2FsdC0x", options.extensions?.prf?.eval?.first)
+        assertEquals(
+            "c2FsdC0x",
+            options.extensions
+                ?.prf
+                ?.eval
+                ?.first,
+        )
     }
 
     @Test
     fun test_creationResponse_whenCredentialManagerJson_returnsFlattenedModel() {
-        val responseJson = """
+        val responseJson =
+            """
             {
               "id": "credential-id",
               "rawId": "credential-id",
@@ -128,7 +158,7 @@ class PasskeyPayloadMapperTest {
                 "transports": ["internal"]
               }
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val response = PasskeyPayloadMapper.creationResponse(responseJson)
 
@@ -139,14 +169,19 @@ class PasskeyPayloadMapperTest {
         val extensionResults = Json.parseToJsonElement(response.clientExtensionResultsJson.orEmpty()).jsonObject
         assertEquals(
             "true",
-            extensionResults["largeBlob"]?.jsonObject?.get("supported")?.jsonPrimitive?.content,
+            extensionResults["largeBlob"]
+                ?.jsonObject
+                ?.get("supported")
+                ?.jsonPrimitive
+                ?.content,
         )
         assertEquals(responseJson, response.rawJson)
     }
 
     @Test
     fun test_authenticationResponse_whenCredentialManagerJson_returnsFlattenedModel() {
-        val responseJson = """
+        val responseJson =
+            """
             {
               "id": "credential-id",
               "rawId": "credential-id",
@@ -162,7 +197,7 @@ class PasskeyPayloadMapperTest {
                 "userHandle": "user"
               }
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val response = PasskeyPayloadMapper.authenticationResponse(responseJson)
 
@@ -174,9 +209,13 @@ class PasskeyPayloadMapperTest {
         val extensionResults = Json.parseToJsonElement(response.clientExtensionResultsJson.orEmpty()).jsonObject
         assertEquals(
             "cmVzdWx0LTE",
-            extensionResults["prf"]?.jsonObject
-                ?.get("results")?.jsonObject
-                ?.get("first")?.jsonPrimitive?.content,
+            extensionResults["prf"]
+                ?.jsonObject
+                ?.get("results")
+                ?.jsonObject
+                ?.get("first")
+                ?.jsonPrimitive
+                ?.content,
         )
     }
 

@@ -75,17 +75,19 @@ private class AndroidCredentialManagerProvider(
         preferImmediatelyAvailableCredentials: Boolean,
         isConditionalCreateRequest: Boolean,
     ): String {
-        val response = credentialManager.createCredential(
-            context = activity,
-            request = CreatePublicKeyCredentialRequest(
-                requestJson,
-                null,
-                preferImmediatelyAvailableCredentials,
-                null,
-                false,
-                isConditionalCreateRequest,
-            ),
-        )
+        val response =
+            credentialManager.createCredential(
+                context = activity,
+                request =
+                    CreatePublicKeyCredentialRequest(
+                        requestJson,
+                        null,
+                        preferImmediatelyAvailableCredentials,
+                        null,
+                        false,
+                        isConditionalCreateRequest,
+                    ),
+            )
         return (response as? CreatePublicKeyCredentialResponse)?.registrationResponseJson
             ?: throw PasskeyException.Unexpected(IllegalStateException("Credential Manager returned ${response::class.qualifiedName}"))
     }
