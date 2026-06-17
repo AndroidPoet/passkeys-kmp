@@ -104,6 +104,39 @@ construct the client directly you must pass it yourself.
 > the **one-time setup** column is still on you — Activity-hosted UI on Android,
 > entitlement + AASA on Apple, a signed `.app` on desktop.
 
+## Domain setup
+
+A passkey is bound to your domain, so each platform needs proof you own it. Host
+these two files under `https://your-domain.com/.well-known/` (web just needs HTTPS):
+
+**Android** — `assetlinks.json`:
+
+```json
+[{
+  "relation": ["delegate_permission/common.get_login_creds"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.your.app",
+    "sha256_cert_fingerprints": ["YOUR:APP:SIGNING:SHA256"]
+  }
+}]
+```
+
+**Apple (iOS + macOS)** — `apple-app-site-association` (no extension, served as `application/json`):
+
+```json
+{ "webcredentials": { "apps": ["TEAMID.com.your.app"] } }
+```
+
+Then add the **Associated Domains** entitlement to your Apple target:
+
+```xml
+<key>com.apple.developer.associated-domains</key>
+<array><string>webcredentials:your-domain.com</string></array>
+```
+
+That's the whole setup. The `create` / `authenticate` code stays identical everywhere.
+
 `registrationOptionsJson` / `authenticationOptionsJson` accept the standard
 WebAuthn JSON (or a `{ "publicKey": … }` wrapper). Responses are returned as
 `rawJson` for your server to verify.
