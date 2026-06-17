@@ -8,20 +8,21 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 internal object PasskeyPayloadMapper {
-    private val json = Json {
-        ignoreUnknownKeys = true
-        explicitNulls = false
-    }
+    private val json =
+        Json {
+            ignoreUnknownKeys = true
+            explicitNulls = false
+        }
 
     fun creationRequestJson(requestJson: String): String =
         mapPayload(requestJson) { root ->
             val publicKey = root["publicKey"]?.jsonObject ?: root
-            publicKey.replaceString("challenge") { it.normalizedBase64Url() }
+            publicKey
+                .replaceString("challenge") { it.normalizedBase64Url() }
                 .replaceObject("user") { user -> user.replaceString("id") { it.normalizedBase64Url() } }
         }
 
@@ -71,9 +72,11 @@ internal object PasskeyPayloadMapper {
         replace(key) { transform(it.jsonObject) }
 
     private fun JsonObject.replace(key: String, transform: (JsonElement) -> JsonElement): JsonObject =
-        JsonObject(toMutableMap().also { fields ->
-            fields[key]?.let { fields[key] = transform(it) }
-        })
+        JsonObject(
+            toMutableMap().also { fields ->
+                fields[key]?.let { fields[key] = transform(it) }
+            },
+        )
 
     private fun PasskeyCreationDto.toModel(rawJson: String): PasskeyCreationResponse =
         PasskeyCreationResponse(

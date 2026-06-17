@@ -26,15 +26,17 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         passkeys = AndroidPasskeyClient(this)
-        status = TextView(this).apply {
-            text = if (BuildConfig.REAL_PASSKEYS_ENABLED) {
-                "Ready on ${android.os.Build.MODEL} for ${BuildConfig.PASSKEYS_SAMPLE_RP_ID}."
-            } else {
-                setupMessage()
+        status =
+            TextView(this).apply {
+                text =
+                    if (BuildConfig.REAL_PASSKEYS_ENABLED) {
+                        "Ready on ${android.os.Build.MODEL} for ${BuildConfig.PASSKEYS_SAMPLE_RP_ID}."
+                    } else {
+                        setupMessage()
+                    }
+                textSize = 15f
+                setTextColor(0xFF334155.toInt())
             }
-            textSize = 15f
-            setTextColor(0xFF334155.toInt())
-        }
 
         setContentView(contentView())
     }
@@ -79,12 +81,13 @@ class MainActivity : Activity() {
         }
 
     private fun blockParams(): LinearLayout.LayoutParams =
-        LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-        ).apply {
-            topMargin = 24
-        }
+        LinearLayout
+            .LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = 24
+            }
 
     private fun createPasskey() {
         if (!BuildConfig.REAL_PASSKEYS_ENABLED) {
@@ -116,40 +119,42 @@ class MainActivity : Activity() {
 
     private fun setupMessage(): String =
         """
-            Android passkeys need a real RP domain.
+        Android passkeys need a real RP domain.
 
-            Rebuild with:
-            ./gradlew :sample:android:installDebug -PpasskeysSampleRpId=your-domain.com
+        Rebuild with:
+        ./gradlew :sample:android:installDebug -PpasskeysSampleRpId=your-domain.com
 
-            Publish this DAL entry on that domain for this debug build:
-            package: io.github.androidpoet.passkeys.sample
-            sha256: C7:0E:B2:F4:D2:E1:0D:0D:AF:5F:4B:89:07:64:A3:1C:D6:FB:0E:41:33:96:5D:A2:A2:E5:BE:51:33:43:09:76
+        Publish this DAL entry on that domain for this debug build:
+        package: io.github.androidpoet.passkeys.sample
+        sha256: C7:0E:B2:F4:D2:E1:0D:0D:AF:5F:4B:89:07:64:A3:1C:D6:FB:0E:41:33:96:5D:A2:A2:E5:BE:51:33:43:09:76
         """.trimIndent()
 
     private companion object {
         private val sampleRegistrationOptions: String
-            get() = """
-            {
-              "challenge": "c2FtcGxlLWNoYWxsZW5nZQ",
-              "rp": { "id": "${BuildConfig.PASSKEYS_SAMPLE_RP_ID}", "name": "Passkeys KMP Sample" },
-              "user": {
-                "id": "c2FtcGxlLXVzZXI",
-                "name": "user@example.com",
-                "displayName": "Sample User"
-              },
-              "pubKeyCredParams": [{ "type": "public-key", "alg": -7 }],
-              "authenticatorSelection": { "userVerification": "preferred" }
-            }
-        """.trimIndent()
+            get() =
+                """
+                {
+                  "challenge": "c2FtcGxlLWNoYWxsZW5nZQ",
+                  "rp": { "id": "${BuildConfig.PASSKEYS_SAMPLE_RP_ID}", "name": "Passkeys KMP Sample" },
+                  "user": {
+                    "id": "c2FtcGxlLXVzZXI",
+                    "name": "user@example.com",
+                    "displayName": "Sample User"
+                  },
+                  "pubKeyCredParams": [{ "type": "public-key", "alg": -7 }],
+                  "authenticatorSelection": { "userVerification": "preferred" }
+                }
+                """.trimIndent()
 
         private val sampleAuthenticationOptions: String
-            get() = """
-            {
-              "challenge": "c2FtcGxlLWNoYWxsZW5nZQ",
-              "rpId": "${BuildConfig.PASSKEYS_SAMPLE_RP_ID}",
-              "allowCredentials": [],
-              "userVerification": "preferred"
-            }
-        """.trimIndent()
+            get() =
+                """
+                {
+                  "challenge": "c2FtcGxlLWNoYWxsZW5nZQ",
+                  "rpId": "${BuildConfig.PASSKEYS_SAMPLE_RP_ID}",
+                  "allowCredentials": [],
+                  "userVerification": "preferred"
+                }
+                """.trimIndent()
     }
 }

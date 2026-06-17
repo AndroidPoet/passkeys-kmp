@@ -46,77 +46,83 @@ internal class PasskeyAuthorizationController {
         this.controller.performRequests()
     }
 
-    private val createDelegate = object : NSObject(), ASAuthorizationControllerDelegateProtocol {
-        override fun authorizationController(
-            controller: ASAuthorizationController,
-            didCompleteWithAuthorization: ASAuthorization,
-        ) {
-            val registration = didCompleteWithAuthorization.credential
-                as ASAuthorizationPlatformPublicKeyCredentialRegistration
-            val attestationObject = registration.rawAttestationObject
+    private val createDelegate =
+        object : NSObject(), ASAuthorizationControllerDelegateProtocol {
+            override fun authorizationController(
+                controller: ASAuthorizationController,
+                didCompleteWithAuthorization: ASAuthorization,
+            ) {
+                val registration =
+                    didCompleteWithAuthorization.credential
+                        as ASAuthorizationPlatformPublicKeyCredentialRegistration
+                val attestationObject = registration.rawAttestationObject
 
-            if (attestationObject == null) {
-                createCompletion?.invoke(
-                    PasskeyResult.Failure(
-                        PasskeyException.Unexpected(NullPointerException("rawAttestationObject is null")),
-                    ),
-                )
-                return
+                if (attestationObject == null) {
+                    createCompletion?.invoke(
+                        PasskeyResult.Failure(
+                            PasskeyException.Unexpected(NullPointerException("rawAttestationObject is null")),
+                        ),
+                    )
+                    return
+                }
+
+                val response =
+                    PasskeyCreationResponse(
+                        id = registration.credentialID.toBase64Url(),
+                        rawId = registration.credentialID.toBase64Url(),
+                        type = PASSKEY_TYPE,
+                        authenticatorAttachment = registration.attachment.toWireValue(),
+                        attestationObject = attestationObject.toBase64Url(),
+                        clientDataJson = registration.rawClientDataJSON.toBase64Url(),
+                        transports = listOf("internal"),
+                        clientExtensionResultsJson = creationExtensionResults(registration)?.toString(),
+                        rawJson = creationRawJson(registration, attestationObject),
+                    )
+
+                createCompletion?.invoke(PasskeyResult.Success(response))
             }
 
-            val response = PasskeyCreationResponse(
-                id = registration.credentialID.toBase64Url(),
-                rawId = registration.credentialID.toBase64Url(),
-                type = PASSKEY_TYPE,
-                authenticatorAttachment = registration.attachment.toWireValue(),
-                attestationObject = attestationObject.toBase64Url(),
-                clientDataJson = registration.rawClientDataJSON.toBase64Url(),
-                transports = listOf("internal"),
-                clientExtensionResultsJson = creationExtensionResults(registration)?.toString(),
-                rawJson = creationRawJson(registration, attestationObject),
-            )
-
-            createCompletion?.invoke(PasskeyResult.Success(response))
+            override fun authorizationController(
+                controller: ASAuthorizationController,
+                didCompleteWithError: NSError,
+            ) {
+                createCompletion?.invoke(PasskeyResult.Failure(didCompleteWithError.toPasskeyException()))
+            }
         }
 
-        override fun authorizationController(
-            controller: ASAuthorizationController,
-            didCompleteWithError: NSError,
-        ) {
-            createCompletion?.invoke(PasskeyResult.Failure(didCompleteWithError.toPasskeyException()))
-        }
-    }
+    private val authenticateDelegate =
+        object : NSObject(), ASAuthorizationControllerDelegateProtocol {
+            override fun authorizationController(
+                controller: ASAuthorizationController,
+                didCompleteWithAuthorization: ASAuthorization,
+            ) {
+                val assertion =
+                    didCompleteWithAuthorization.credential
+                        as ASAuthorizationPlatformPublicKeyCredentialAssertion
+                val response =
+                    PasskeyAuthenticationResponse(
+                        id = assertion.credentialID.toBase64Url(),
+                        rawId = assertion.credentialID.toBase64Url(),
+                        type = PASSKEY_TYPE,
+                        authenticatorAttachment = assertion.attachment.toWireValue(),
+                        clientDataJson = assertion.rawClientDataJSON.toBase64Url(),
+                        authenticatorData = assertion.rawAuthenticatorData?.toBase64Url(),
+                        signature = assertion.signature?.toBase64Url(),
+                        userHandle = assertion.userID?.toBase64Url(),
+                        clientExtensionResultsJson = authenticationExtensionResults(assertion)?.toString(),
+                        rawJson = authenticationRawJson(assertion),
+                    )
 
-    private val authenticateDelegate = object : NSObject(), ASAuthorizationControllerDelegateProtocol {
-        override fun authorizationController(
-            controller: ASAuthorizationController,
-            didCompleteWithAuthorization: ASAuthorization,
-        ) {
-            val assertion = didCompleteWithAuthorization.credential
-                as ASAuthorizationPlatformPublicKeyCredentialAssertion
-            val response = PasskeyAuthenticationResponse(
-                id = assertion.credentialID.toBase64Url(),
-                rawId = assertion.credentialID.toBase64Url(),
-                type = PASSKEY_TYPE,
-                authenticatorAttachment = assertion.attachment.toWireValue(),
-                clientDataJson = assertion.rawClientDataJSON.toBase64Url(),
-                authenticatorData = assertion.rawAuthenticatorData?.toBase64Url(),
-                signature = assertion.signature?.toBase64Url(),
-                userHandle = assertion.userID?.toBase64Url(),
-                clientExtensionResultsJson = authenticationExtensionResults(assertion)?.toString(),
-                rawJson = authenticationRawJson(assertion),
-            )
+                authenticateCompletion?.invoke(PasskeyResult.Success(response))
+            }
 
-            authenticateCompletion?.invoke(PasskeyResult.Success(response))
+            override fun authorizationController(
+                controller: ASAuthorizationController,
+                didCompleteWithError: NSError,
+            ) {
+                authenticateCompletion?.invoke(PasskeyResult.Failure(didCompleteWithError.toPasskeyException()))
+            }
         }
-
-        override fun authorizationController(
-            controller: ASAuthorizationController,
-            didCompleteWithError: NSError,
-        ) {
-            authenticateCompletion?.invoke(PasskeyResult.Failure(didCompleteWithError.toPasskeyException()))
-        }
-    }
 
     private fun creationRawJson(
         registration: ASAuthorizationPlatformPublicKeyCredentialRegistration,

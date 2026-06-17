@@ -1,0 +1,79 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Quality gates + JVM tests. macOS runners ship the Android SDK, so apiCheck
+  # (which compiles the JVM, Android and native klib ABIs) runs here too.
+  quality:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Formatting (spotlessCheck)
+        run: ./gradlew spotlessCheck
+
+      - name: Static analysis (detekt)
+        run: ./gradlew detekt
+
+      - name: Binary compatibility (apiCheck)
+        run: ./gradlew apiCheck
+
+      - name: JVM + Android tests
+        run: ./gradlew jvmTest testDebugUnitTest
+
+      - name: Coverage gate (koverVerify)
+        run: ./gradlew koverVerify
+
+  # Compile every declared target family so a platform-specific break is caught
+  # on the OS that can actually link it (Linux/Windows native need their host).
+  multiplatform:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: apple
+            tasks: >-
+              compileKotlinIosArm64 compileKotlinIosSimulatorArm64
+              compileKotlinMacosArm64 compileKotlinMacosX64
+          - os: ubuntu-latest
+            name: linux-wasm-jvm
+            tasks: compileKotlinJvm compileKotlinLinuxX64 compileKotlinWasmJs
+          - os: windows-latest
+            name: windows
+            tasks: compileKotlinMingwX64
+    name: compile (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install libfido2 (Linux native cinterop)
+        if: matrix.name == 'linux-wasm-jvm'
+        run: sudo apt-get update && sudo apt-get install -y libfido2-dev
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compile ${{ matrix.name }} targets
+        run: ./gradlew ${{ matrix.tasks }}

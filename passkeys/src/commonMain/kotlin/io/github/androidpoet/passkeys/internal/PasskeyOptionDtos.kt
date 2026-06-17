@@ -13,7 +13,9 @@ internal data class NativeCreationOptions(
 )
 
 @Serializable
-internal data class NativeRelyingParty(val id: String)
+internal data class NativeRelyingParty(
+    val id: String,
+)
 
 @Serializable
 internal data class NativeUser(

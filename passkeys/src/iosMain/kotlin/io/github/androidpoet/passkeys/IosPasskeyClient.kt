@@ -51,26 +51,29 @@ public class IosPasskeyClient : PasskeyClient {
         runCatching {
             val nativeOptions = PasskeyPayloadMapper.nativeCreationOptions(options.requestJson)
             val provider = ASAuthorizationPlatformPublicKeyCredentialProvider(nativeOptions.rp.id)
-            val request = provider.createCredentialRegistrationRequestWithChallenge(
-                challenge = nativeOptions.challenge.toNSData(),
-                name = nativeOptions.user.name,
-                userID = nativeOptions.user.id.toNSData(),
-            )
+            val request =
+                provider.createCredentialRegistrationRequestWithChallenge(
+                    challenge = nativeOptions.challenge.toNSData(),
+                    name = nativeOptions.user.name,
+                    userID = nativeOptions.user.id.toNSData(),
+                )
             nativeOptions.attestation?.let(request::setAttestationPreference)
             nativeOptions.user.displayName?.let { request.displayName = it }
             nativeOptions.authenticatorSelection?.userVerification?.let(request::setUserVerificationPreference)
             nativeOptions.extensions?.largeBlob?.support?.let { support ->
                 requireIosVersion(LARGE_BLOB_MIN_OS_VERSION, "largeBlob registration")
-                request.largeBlob = ASAuthorizationPublicKeyCredentialLargeBlobRegistrationInput(
-                    supportRequirement = when (support) {
-                        "required" ->
-                            ASAuthorizationPublicKeyCredentialLargeBlobSupportRequirement
-                                .ASAuthorizationPublicKeyCredentialLargeBlobSupportRequirementRequired
-                        else ->
-                            ASAuthorizationPublicKeyCredentialLargeBlobSupportRequirement
-                                .ASAuthorizationPublicKeyCredentialLargeBlobSupportRequirementPreferred
-                    },
-                )
+                request.largeBlob =
+                    ASAuthorizationPublicKeyCredentialLargeBlobRegistrationInput(
+                        supportRequirement =
+                            when (support) {
+                                "required" ->
+                                    ASAuthorizationPublicKeyCredentialLargeBlobSupportRequirement
+                                        .ASAuthorizationPublicKeyCredentialLargeBlobSupportRequirementRequired
+                                else ->
+                                    ASAuthorizationPublicKeyCredentialLargeBlobSupportRequirement
+                                        .ASAuthorizationPublicKeyCredentialLargeBlobSupportRequirementPreferred
+                            },
+                    )
             }
             nativeOptions.extensions?.prf?.let { prf ->
                 requireIosVersion(PRF_MIN_OS_VERSION, "PRF registration")
@@ -94,29 +97,33 @@ public class IosPasskeyClient : PasskeyClient {
             val nativeOptions = PasskeyPayloadMapper.nativeAuthenticationOptions(options.requestJson)
             val provider = ASAuthorizationPlatformPublicKeyCredentialProvider(nativeOptions.rpId)
             val request = provider.createCredentialAssertionRequestWithChallenge(nativeOptions.challenge.toNSData())
-            request.allowedCredentials = nativeOptions.allowCredentials.map {
-                ASAuthorizationPlatformPublicKeyCredentialDescriptor(credentialID = it.id.toNSData())
-            }
+            request.allowedCredentials =
+                nativeOptions.allowCredentials.map {
+                    ASAuthorizationPlatformPublicKeyCredentialDescriptor(credentialID = it.id.toNSData())
+                }
             nativeOptions.userVerification?.let(request::setUserVerificationPreference)
             nativeOptions.extensions?.largeBlob?.let { largeBlob ->
                 requireIosVersion(LARGE_BLOB_MIN_OS_VERSION, "largeBlob authentication")
-                val operation = if (largeBlob.write != null) {
-                    ASAuthorizationPublicKeyCredentialLargeBlobAssertionOperation
-                        .ASAuthorizationPublicKeyCredentialLargeBlobAssertionOperationWrite
-                } else {
-                    ASAuthorizationPublicKeyCredentialLargeBlobAssertionOperation
-                        .ASAuthorizationPublicKeyCredentialLargeBlobAssertionOperationRead
-                }
-                request.largeBlob = ASAuthorizationPublicKeyCredentialLargeBlobAssertionInput(operation = operation).also {
-                    largeBlob.write?.let { value -> it.dataToWrite = value.toNSData() }
-                }
+                val operation =
+                    if (largeBlob.write != null) {
+                        ASAuthorizationPublicKeyCredentialLargeBlobAssertionOperation
+                            .ASAuthorizationPublicKeyCredentialLargeBlobAssertionOperationWrite
+                    } else {
+                        ASAuthorizationPublicKeyCredentialLargeBlobAssertionOperation
+                            .ASAuthorizationPublicKeyCredentialLargeBlobAssertionOperationRead
+                    }
+                request.largeBlob =
+                    ASAuthorizationPublicKeyCredentialLargeBlobAssertionInput(operation = operation).also {
+                        largeBlob.write?.let { value -> it.dataToWrite = value.toNSData() }
+                    }
             }
             nativeOptions.extensions?.prf?.eval?.let {
                 requireIosVersion(PRF_MIN_OS_VERSION, "PRF authentication")
-                request.prf = ASAuthorizationPublicKeyCredentialPRFAssertionInput(
-                    inputValues = it.toPrfValues(),
-                    perCredentialInputValues = null,
-                )
+                request.prf =
+                    ASAuthorizationPublicKeyCredentialPRFAssertionInput(
+                        inputValues = it.toPrfValues(),
+                        perCredentialInputValues = null,
+                    )
             }
 
             ASAuthorizationController(authorizationRequests = listOf(request)).also {
@@ -157,8 +164,7 @@ private fun String.toNSData(): NSData {
     }
 }
 
-private fun io.github.androidpoet.passkeys.internal.NativePrfValues.toPrfValues():
-    ASAuthorizationPublicKeyCredentialPRFAssertionInputValues =
+private fun io.github.androidpoet.passkeys.internal.NativePrfValues.toPrfValues(): ASAuthorizationPublicKeyCredentialPRFAssertionInputValues =
     ASAuthorizationPublicKeyCredentialPRFAssertionInputValues(
         saltInput1 = first.toNSData(),
         saltInput2 = second?.toNSData(),
