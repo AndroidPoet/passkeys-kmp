@@ -208,3 +208,11 @@ final class io.github.androidpoet.passkeys/MacosPasskeyClient : io.github.androi
     final suspend fun create(io.github.androidpoet.passkeys.models/PasskeyCreationOptions): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyCreationResponse> // io.github.androidpoet.passkeys/MacosPasskeyClient.create|create(io.github.androidpoet.passkeys.models.PasskeyCreationOptions){}[0]
     final suspend fun create(kotlin/String): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyCreationResponse> // io.github.androidpoet.passkeys/MacosPasskeyClient.create|create(kotlin.String){}[0]
 }
+
+// Targets: [wasmJs]
+final class io.github.androidpoet.passkeys/WasmJsPasskeyClient : io.github.androidpoet.passkeys/PasskeyClient { // io.github.androidpoet.passkeys/WasmJsPasskeyClient|null[0]
+    constructor <init>() // io.github.androidpoet.passkeys/WasmJsPasskeyClient.<init>|<init>(){}[0]
+
+    final suspend fun authenticate(io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyAuthenticationResponse> // io.github.androidpoet.passkeys/WasmJsPasskeyClient.authenticate|authenticate(io.github.androidpoet.passkeys.models.PasskeyAuthenticationOptions){}[0]
+    final suspend fun create(io.github.androidpoet.passkeys.models/PasskeyCreationOptions): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyCreationResponse> // io.github.androidpoet.passkeys/WasmJsPasskeyClient.create|create(io.github.androidpoet.passkeys.models.PasskeyCreationOptions){}[0]
+}

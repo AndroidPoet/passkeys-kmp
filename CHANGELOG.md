@@ -8,6 +8,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Browser (Wasm)** — real passkey ceremonies via `navigator.credentials`
+  (`WasmJsPasskeyClient`). Uses the browser's own WebAuthn JSON serialization
+  (`parseCreationOptionsFromJSON` / `parseRequestOptionsFromJSON` / `toJSON`,
+  Baseline March 2025) so base64url ↔ `ArrayBuffer` conversion is handled
+  natively; DOMException names map to the shared `PasskeyException` hierarchy.
 - **macOS** — real passkey ceremonies via AuthenticationServices
   (`MacosPasskeyClient`, macOS 13+). The iOS and macOS clients now share one
   `ApplePasskeyClient` ceremony implementation; the only per-platform
