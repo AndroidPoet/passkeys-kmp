@@ -26,7 +26,14 @@ when (val result = passkeys.create(registrationOptionsJson)) {
 ```
 
 `rememberPasskeyClient()` (from `:passkeys-compose`) is the single entry point for
-Compose Multiplatform apps — identical on Android, iOS, desktop, and web.
+Compose Multiplatform apps — identical on Android, iOS, desktop, and web. It
+reads the platform anchor implicitly from the composition (e.g. the Activity via
+`LocalContext` on Android), so **you pass nothing at the call site**.
+
+> It still needs each platform's standard passkey setup, though — the call is
+> unified, the platform requirements are not. You must host the UI in an
+> **Activity** on Android, ship the **Associated Domains** entitlement on Apple,
+> and sign the desktop `.app`. See [Platform requirements](#platform-requirements).
 
 ## Install
 
@@ -50,21 +57,26 @@ implementation("io.github.androidpoet:passkeys-compose:0.1.0")  // rememberPassk
 > Run real-device verification with domain association + backend challenge checks
 > before release — see [docs/e2e-real-device.md](docs/e2e-real-device.md).
 
-## Without Compose — construct the client directly
+## Platform requirements
 
-`rememberPasskeyClient()` just wires the right constructor; the only platform
-difference is the presentation anchor each OS requires. Same `create` /
-`authenticate` API on all of them.
+The `create` / `authenticate` API is identical everywhere, but each platform
+needs (a) a **presentation anchor** to attach its system UI to, and (b) some
+**one-time setup**. `rememberPasskeyClient()` supplies the anchor for you; if you
+construct the client directly you must pass it yourself.
 
-| Platform | Constructor |
-| --- | --- |
-| Android | `AndroidPasskeyClient(activity)` |
-| iOS | `IosPasskeyClient(uiWindow)` |
-| macOS (Kotlin/Native) | `MacosPasskeyClient(nsWindow)` |
-| JVM desktop | `JvmPasskeyClient { window.windowHandle }` |
-| Browser (Wasm) | `WasmJsPasskeyClient()` |
-| Windows | `WindowsPasskeyClient(hwnd)` |
-| Linux | `LinuxPasskeyClient()` |
+| Platform | Anchor you provide | Direct constructor | One-time setup |
+| --- | --- | --- | --- |
+| **Android** | the hosting **`Activity`** (Credential Manager needs an Activity context, not the application context) | `AndroidPasskeyClient(activity)` | API 28+, publish `assetlinks.json` for your package + signing SHA-256 |
+| **iOS** | a **`UIWindow`** to anchor the sheet | `IosPasskeyClient(uiWindow)` | iOS 16+, Associated Domains entitlement `webcredentials:<rpId>` + AASA file |
+| **macOS** | an **`NSWindow`** | `MacosPasskeyClient(nsWindow)` | macOS 13+, Associated Domains entitlement + AASA file |
+| **JVM desktop** | the window handle (`{ window.windowHandle }`); `0L` falls back to the key window | `JvmPasskeyClient { window.windowHandle }` | macOS only; **signed `.app`** with the Associated Domains entitlement + provisioning profile |
+| **Browser (Wasm)** | none | `WasmJsPasskeyClient()` | secure context (HTTPS or `localhost`) |
+| **Windows** | top-level **`HWND`** (as `Long`; `0L` → foreground window) | `WindowsPasskeyClient(hwnd)` | Windows 10 1903+ |
+| **Linux** | none (roaming keys only) | `LinuxPasskeyClient()` | `libfido2` + udev rules; security keys only |
+
+> With `rememberPasskeyClient()` the anchor column is handled automatically, but
+> the **one-time setup** column is still on you — Activity-hosted UI on Android,
+> entitlement + AASA on Apple, a signed `.app` on desktop.
 
 `registrationOptionsJson` / `authenticationOptionsJson` accept the standard
 WebAuthn JSON (or a `{ "publicKey": … }` wrapper). Responses are returned as
