@@ -23,43 +23,9 @@
 </p>
 
 <p align="center">
-A Kotlin Multiplatform passkeys (WebAuthn) SDK with <b>one common API</b> and real native
+One common <b>passkeys (WebAuthn)</b> API for Kotlin Multiplatform, backed by real native
 authenticators on Android, iOS, macOS, Windows, Linux, browser (Wasm), and JVM/Compose Desktop.
 </p>
-
-## One API, every platform
-
-Every platform speaks the same `PasskeyClient` contract — `create` / `authenticate`
-returning a `PasskeyResult` — so your call site never changes:
-
-```kotlin
-val passkeys: PasskeyClient = rememberPasskeyClient()   // Compose: resolves the platform client + anchor
-
-when (val result = passkeys.create(registrationOptionsJson)) {
-    is PasskeyResult.Success -> sendToBackend(result.value.rawJson) // verify on your server
-    is PasskeyResult.Failure -> handle(result.error.code, result.error.message)
-}
-```
-
-`rememberPasskeyClient()` (from `:passkeys-compose`) is the single entry point for
-Compose Multiplatform apps — identical on Android, iOS, desktop, and web. It
-reads the platform anchor implicitly from the composition (e.g. the Activity via
-`LocalContext` on Android), so **you pass nothing at the call site**.
-
-> It still needs each platform's standard passkey setup, though — the call is
-> unified, the platform requirements are not. You must host the UI in an
-> **Activity** on Android, ship the **Associated Domains** entitlement on Apple,
-> and sign the desktop `.app`. See [Platform requirements](#platform-requirements).
-
-## Features
-
-- ✅ **One common API** — `create` / `authenticate` → `PasskeyResult`, identical on every target
-- ✅ **Real native authenticators** — Credential Manager, AuthenticationServices, Windows Hello, libfido2, `navigator.credentials`
-- ✅ **Compose Multiplatform** — `rememberPasskeyClient()` resolves the platform client + anchor for you
-- ✅ **7 targets** — Android, iOS, macOS, Windows, Linux, browser (Wasm), JVM / Compose Desktop
-- ✅ **Standard WebAuthn JSON** in and out — pairs with any WebAuthn server library
-- ✅ **Typed errors** — a `PasskeyException` hierarchy, no leaky platform exceptions
-- ✅ **Apple extensions** — `largeBlob` and `prf` where the OS supports them
 
 ## Install
 
@@ -68,63 +34,80 @@ implementation("io.github.androidpoet:passkeys:0.1.0")          // core SDK
 implementation("io.github.androidpoet:passkeys-compose:0.1.0")  // rememberPasskeyClient() (Compose MP)
 ```
 
-## Platform support
+## Usage
 
-| Platform | Authenticator | Backed by | Setup |
+One call site, every platform — `create` / `authenticate` return a `PasskeyResult`:
+
+```kotlin
+val passkeys = rememberPasskeyClient()   // resolves the platform client + its UI anchor
+
+when (val result = passkeys.create(registrationOptionsJson)) {   // or .authenticate(...)
+    is PasskeyResult.Success -> sendToBackend(result.value.rawJson) // verify on your server
+    is PasskeyResult.Failure -> handle(result.error.code, result.error.message)
+}
+```
+
+### Where to call it
+
+`rememberPasskeyClient()` finds the anchor (the **Activity** on Android, the **UIWindow**
+on iOS, …) from the composition — so call it **inside your Compose content**, the one hosted
+by the platform entry point. Nothing to pass:
+
+```kotlin
+// Android — androidMain
+class MainActivity : ComponentActivity() {
+    override fun onCreate(b: Bundle?) { super.onCreate(b); setContent { App() } }
+}
+
+// iOS — iosMain
+fun MainViewController() = ComposeUIViewController { App() }
+
+// Desktop — desktopMain
+fun main() = application { Window(::exitApplication) { App() } }
+
+// Web — wasmJsMain
+fun main() = ComposeViewport(document.body!!) { App() }
+```
+
+```kotlin
+// commonMain — write the passkey code once
+@Composable fun App() {
+    val passkeys = rememberPasskeyClient()   // ← here: inside the hosted composition
+    /* buttons that call passkeys.create / passkeys.authenticate */
+}
+```
+
+> Not using Compose? Construct directly and pass the anchor yourself:
+> `AndroidPasskeyClient(activity)`, `IosPasskeyClient(uiWindow)`, `MacosPasskeyClient(nsWindow)`,
+> `JvmPasskeyClient { window.windowHandle }`, `WindowsPasskeyClient(hwnd)`,
+> `WasmJsPasskeyClient()`, `LinuxPasskeyClient()`.
+
+## Platforms
+
+| Platform | Authenticator | Anchor (auto via Compose) | One-time setup |
 | --- | --- | --- | --- |
-| Android | Fingerprint / face / PIN | Credential Manager (API 28+) | Digital Asset Links (`assetlinks.json`) |
-| iOS 16+ | Face ID / Touch ID | AuthenticationServices | Associated Domains (`webcredentials:`) |
-| macOS 13+ | Touch ID | AuthenticationServices | Associated Domains (`webcredentials:`) |
-| JVM / Compose Desktop | Touch ID (macOS) | bundled Swift + JNI bridge | signed `.app` + entitlement (see below) |
-| Browser (Wasm) | Platform / security key | `navigator.credentials` | secure context (HTTPS / `localhost`) |
-| Windows 10 1903+ | Windows Hello / security key | OS WebAuthn (`webauthn.dll`) | top-level `HWND` |
-| Linux | Roaming USB/NFC security key only | libfido2 | `libfido2` + udev rules |
-
-> Run real-device verification with domain association + backend challenge checks
-> before release — see [docs/e2e-real-device.md](docs/e2e-real-device.md).
-
-## Platform requirements
-
-The `create` / `authenticate` API is identical everywhere, but each platform
-needs (a) a **presentation anchor** to attach its system UI to, and (b) some
-**one-time setup**. `rememberPasskeyClient()` supplies the anchor for you; if you
-construct the client directly you must pass it yourself.
-
-| Platform | Anchor you provide | Direct constructor | One-time setup |
-| --- | --- | --- | --- |
-| **Android** | the hosting **`Activity`** (Credential Manager needs an Activity context, not the application context) | `AndroidPasskeyClient(activity)` | API 28+, publish `assetlinks.json` for your package + signing SHA-256 |
-| **iOS** | a **`UIWindow`** to anchor the sheet | `IosPasskeyClient(uiWindow)` | iOS 16+, Associated Domains entitlement `webcredentials:<rpId>` + AASA file |
-| **macOS** | an **`NSWindow`** | `MacosPasskeyClient(nsWindow)` | macOS 13+, Associated Domains entitlement + AASA file |
-| **JVM desktop** | the window handle (`{ window.windowHandle }`); `0L` falls back to the key window | `JvmPasskeyClient { window.windowHandle }` | macOS only; **signed `.app`** with the Associated Domains entitlement + provisioning profile |
-| **Browser (Wasm)** | none | `WasmJsPasskeyClient()` | secure context (HTTPS or `localhost`) |
-| **Windows** | top-level **`HWND`** (as `Long`; `0L` → foreground window) | `WindowsPasskeyClient(hwnd)` | Windows 10 1903+ |
-| **Linux** | none (roaming keys only) | `LinuxPasskeyClient()` | `libfido2` + udev rules; security keys only |
-
-> With `rememberPasskeyClient()` the anchor column is handled automatically, but
-> the **one-time setup** column is still on you — Activity-hosted UI on Android,
-> entitlement + AASA on Apple, a signed `.app` on desktop.
+| Android (API 28+) | Fingerprint / face / PIN | `Activity` | `assetlinks.json` |
+| iOS 16+ | Face ID / Touch ID | `UIWindow` | entitlement + AASA |
+| macOS 13+ | Touch ID | `NSWindow` | entitlement + AASA |
+| JVM / Compose Desktop | Touch ID (macOS) | window handle | signed `.app` + entitlement |
+| Browser (Wasm) | Platform / security key | — | HTTPS |
+| Windows 10 1903+ | Windows Hello / security key | `HWND` | — |
+| Linux | Roaming USB/NFC key only | — | `libfido2` + udev rules |
 
 ## Domain setup
 
-A passkey is bound to your domain, so each platform needs proof you own it. Host
-these two files under `https://your-domain.com/.well-known/` (web just needs HTTPS):
+A passkey is bound to your domain, so each platform needs proof you own it. Host these
+two files under `https://your-domain.com/.well-known/` (web just needs HTTPS):
 
-**Android** — `assetlinks.json`:
-
-```json
-[{
-  "relation": ["delegate_permission/common.get_login_creds"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "com.your.app",
-    "sha256_cert_fingerprints": ["YOUR:APP:SIGNING:SHA256"]
-  }
-}]
+```jsonc
+// assetlinks.json  (Android)
+[{ "relation": ["delegate_permission/common.get_login_creds"],
+   "target": { "namespace": "android_app", "package_name": "com.your.app",
+               "sha256_cert_fingerprints": ["YOUR:APP:SIGNING:SHA256"] } }]
 ```
 
-**Apple (iOS + macOS)** — `apple-app-site-association` (no extension, served as `application/json`):
-
-```json
+```jsonc
+// apple-app-site-association  (iOS + macOS — no extension, served as application/json)
 { "webcredentials": { "apps": ["TEAMID.com.your.app"] } }
 ```
 
@@ -135,84 +118,24 @@ Then add the **Associated Domains** entitlement to your Apple target:
 <array><string>webcredentials:your-domain.com</string></array>
 ```
 
-That's the whole setup. The `create` / `authenticate` code stays identical everywhere.
-
-`registrationOptionsJson` / `authenticationOptionsJson` accept the standard
-WebAuthn JSON (or a `{ "publicKey": … }` wrapper). Responses are returned as
-`rawJson` for your server to verify.
-
 ## Verify on your server
 
-A passkey is only trustworthy after **your backend** validates it. This SDK runs
-the device-side ceremony and hands you the WebAuthn response — verification is
-always server-side. The full flow is a round trip with your relying party (RP):
-
-```
-        ┌────────── 1. begin ──────────┐
- server │  generate a random challenge │  (store it against the user/session)
-        │  + options JSON              │
-        └──────────────┬───────────────┘
-                       │ options JSON
-                       ▼
- device   passkeys.create(json) / passkeys.authenticate(json)   ← this SDK
-                       │ result.value.rawJson
-                       ▼
-        ┌──────────── 2. finish ───────────────┐
- server │  verify challenge, origin, RP ID,    │  (a WebAuthn server library)
-        │  signature & sign-count, then store  │
-        └──────────────────────────────────────┘
-```
-
-**1. Begin** — your server creates the options (with a fresh, single-use
-`challenge`) and returns them; pass that JSON straight into `create` /
-`authenticate`.
-
-**2. Finish** — send the result back and verify it server-side:
-
-```kotlin
-when (val result = passkeys.create(registrationOptionsJson)) {
-    is PasskeyResult.Success -> {
-        // POST the raw WebAuthn JSON to your backend for verification + storage
-        api.verifyRegistration(result.value.rawJson)
-    }
-    is PasskeyResult.Failure -> handle(result.error)
-}
-```
-
-Your backend must check, **on every ceremony**:
-
-| Check | Registration (`create`) | Authentication (`authenticate`) |
-| --- | --- | --- |
-| `challenge` matches the one you issued (and hasn't been used) | ✓ | ✓ |
-| `origin` in `clientDataJson` is your app/site | ✓ | ✓ |
-| RP ID hash in the authenticator data matches your `rpId` | ✓ | ✓ |
-| attestation / public key is parsed and the credential **stored** | ✓ | — |
-| `signature` verifies against the **stored** public key | — | ✓ |
-| sign-count increases (or is 0) — guards against cloned authenticators | — | ✓ |
-
-Don't write your own verifier — use a maintained WebAuthn server library, e.g.
-**[java-webauthn-server](https://github.com/Yubico/java-webauthn-server)** or
-**[webauthn4j](https://github.com/webauthn4j/webauthn4j)** (JVM/Kotlin backends),
-**[SimpleWebAuthn](https://simplewebauthn.dev/)** (Node), or
-**[py_webauthn](https://github.com/duo-labs/py_webauthn)** (Python). Feed it
-`result.value.rawJson` — it carries every field these libraries expect
-(`clientDataJson`, `attestationObject` / `authenticatorData`, `signature`,
-`userHandle`, `transports`, and `clientExtensionResultsJson` for extension
-outputs).
+The SDK only runs the device ceremony — a passkey is trustworthy **only after your backend
+verifies it**. Your server generates a fresh `challenge` into the options JSON, you pass that
+to `create` / `authenticate`, then POST `result.value.rawJson` back to verify and store it.
+Use a maintained WebAuthn server library — [java-webauthn-server](https://github.com/Yubico/java-webauthn-server),
+[webauthn4j](https://github.com/webauthn4j/webauthn4j), [SimpleWebAuthn](https://simplewebauthn.dev/),
+or [py_webauthn](https://github.com/duo-labs/py_webauthn) — to check the challenge, origin,
+RP ID, signature, and sign-count. `rawJson` carries every field they expect.
 
 <details>
 <summary><b>JVM / Compose Desktop — native macOS passkeys</b></summary>
 
-On macOS, `JvmPasskeyClient` drives the real Touch ID ceremony via a bundled
-native backend (`libPasskeysNative.dylib`, a Swift + JNI shim over
-AuthenticationServices, built from `passkeys/src/jvmMain/native/macos`).
-
-A passkey ceremony **only runs from a signed `.app`** carrying the
-`com.apple.developer.associated-domains` (`webcredentials:<rpId>`) entitlement —
-and because that entitlement is *restricted*, the signature must embed a
-provisioning profile granting it for your App ID. A bare `java -jar` from the
-terminal will not launch. On Windows/Linux (or if the native backend can't load)
-the client fails loud — use browser handoff instead:
+On macOS, `JvmPasskeyClient` drives the real Touch ID ceremony via a bundled native backend
+(`libPasskeysNative.dylib`, a Swift + JNI shim over AuthenticationServices). The ceremony
+**only runs from a signed `.app`** carrying the restricted `com.apple.developer.associated-domains`
+entitlement with an embedded provisioning profile — a bare `java -jar` will not launch. On
+Windows/Linux (or if the native backend can't load) the client fails loud; use browser handoff:
 
 ```kotlin
 PasskeyBrowserHandoff.open("https://your-rp.example/passkey/sign-in")
@@ -222,8 +145,7 @@ PasskeyBrowserHandoff.open("https://your-rp.example/passkey/sign-in")
 <details>
 <summary><b>Apple extensions (iOS & macOS)</b></summary>
 
-- `largeBlob` registration/authentication: iOS 17+ / macOS 14+
-- `prf` registration/authentication: iOS 18+ / macOS 15+
+- `largeBlob`: iOS 17+ / macOS 14+ — `prf`: iOS 18+ / macOS 15+
 - Unsupported OS versions fail with `PasskeyException.Unsupported` before any UI
 - Extension outputs are preserved in `rawJson.clientExtensionResults`
 </details>
@@ -231,38 +153,26 @@ PasskeyBrowserHandoff.open("https://your-rp.example/passkey/sign-in")
 <details>
 <summary><b>Linux — security keys only</b></summary>
 
-Linux has no platform/biometric authenticator, so `LinuxPasskeyClient` supports
-roaming USB/NFC security keys via libfido2 (`LinuxPasskeyClient.capabilities` →
-roaming=true, platform=false, hybrid=false). Requires `libfido2-dev` /
-`libfido2-devel` and udev rules granting non-root access. Platform and
-phone/hybrid passkeys fail with a typed `PasskeyException`.
+No platform/biometric authenticator, so `LinuxPasskeyClient` supports roaming USB/NFC security
+keys via libfido2. Requires `libfido2-dev` / `libfido2-devel` and udev rules granting non-root
+access. Platform and phone/hybrid passkeys fail with a typed `PasskeyException`.
 </details>
 
-## Sample — one codebase, every platform
+## Sample
 
-`:sample:composeApp` is a single Compose Multiplatform app: the whole UI and
-client setup live in `commonMain`, and each platform's entry point is just
-`App()`. The sample carries no real domain — supply your own:
+`:sample:composeApp` is one Compose Multiplatform app — the whole UI lives in `commonMain`,
+each entry point is just `App()`. Supply your own domain:
 
 ```sh
-# Android (certified device/emulator)
-./gradlew :sample:composeApp:installDebug -PpasskeysSampleRpId=your-domain.com
-
-# macOS desktop (run to see the UI; create/authenticate need a signed .app)
-./gradlew :sample:composeApp:run -PpasskeysSampleRpId=your-domain.com -PpasskeysSampleBundleId=com.your.app
+./gradlew :sample:composeApp:installDebug -PpasskeysSampleRpId=your-domain.com   # Android
+./gradlew :sample:composeApp:run -PpasskeysSampleRpId=your-domain.com            # macOS desktop
 ```
 
-`passkeysSampleRpId` / `passkeysSampleBundleId` configure the relying party and
-bundle id. For iOS, set the `webcredentials:` domain in
-`sample/composeApp/iosApp/iosApp/iosApp.entitlements` and pass
-`PRODUCT_BUNDLE_IDENTIFIER` / `DEVELOPMENT_TEAM` to `xcodebuild`. Publish matching
-`assetlinks.json` (Android) and `apple-app-site-association` (Apple) under
-`/.well-known/` on your domain. A browser demo lives in `:sample:web`.
+A browser demo lives in `:sample:web`.
 
-## Build & test the library
+## Build & test
 
 ```sh
-./gradlew :passkeys:allTests :passkeys:testDebugUnitTest
-./gradlew spotlessCheck detekt apiCheck
+./gradlew :passkeys:allTests spotlessCheck detekt apiCheck
 ./gradlew :passkeys:assemble :passkeys:publishToMavenLocal
 ```
