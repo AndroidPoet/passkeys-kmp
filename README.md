@@ -47,35 +47,8 @@ when (val result = passkeys.create(registrationOptionsJson)) {   // or .authenti
 }
 ```
 
-### Where to call it
-
-`rememberPasskeyClient()` finds the anchor (the **Activity** on Android, the **UIWindow**
-on iOS, …) from the composition — so call it **inside your Compose content**, the one hosted
-by the platform entry point. Nothing to pass:
-
-```kotlin
-// Android — androidMain
-class MainActivity : ComponentActivity() {
-    override fun onCreate(b: Bundle?) { super.onCreate(b); setContent { App() } }
-}
-
-// iOS — iosMain
-fun MainViewController() = ComposeUIViewController { App() }
-
-// Desktop — desktopMain
-fun main() = application { Window(::exitApplication) { App() } }
-
-// Web — wasmJsMain
-fun main() = ComposeViewport(document.body!!) { App() }
-```
-
-```kotlin
-// commonMain — write the passkey code once
-@Composable fun App() {
-    val passkeys = rememberPasskeyClient()   // ← here: inside the hosted composition
-    /* buttons that call passkeys.create / passkeys.authenticate */
-}
-```
+Call it inside your Compose content (`setContent { App() }`, `ComposeUIViewController { App() }`,
+etc.) — it reads the anchor from the composition, so there's nothing to pass.
 
 > Not using Compose? Construct directly and pass the anchor yourself:
 > `AndroidPasskeyClient(activity)`, `IosPasskeyClient(uiWindow)`, `MacosPasskeyClient(nsWindow)`,
