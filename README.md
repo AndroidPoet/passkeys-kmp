@@ -7,6 +7,22 @@
 <p align="center"><b>Simple. Secure. Passwordless.</b></p>
 
 <p align="center">
+  <a href="https://central.sonatype.com/artifact/io.github.androidpoet/passkeys"><img alt="Maven Central" src="https://img.shields.io/maven-central/v/io.github.androidpoet/passkeys?color=blue&label=Maven%20Central"/></a>
+  <a href="https://kotlinlang.org"><img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.1.10-7F52FF?logo=kotlin&logoColor=white"/></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg"/></a>
+</p>
+
+<p align="center">
+  <img alt="badge-android" src="http://img.shields.io/badge/-android-6EDB8D.svg?style=flat"/>
+  <img alt="badge-ios" src="http://img.shields.io/badge/-ios-CDCDCD.svg?style=flat"/>
+  <img alt="badge-macos" src="http://img.shields.io/badge/-macos-111111.svg?style=flat"/>
+  <img alt="badge-windows" src="http://img.shields.io/badge/-windows-4D76CD.svg?style=flat"/>
+  <img alt="badge-linux" src="http://img.shields.io/badge/-linux-FEC701.svg?style=flat"/>
+  <img alt="badge-wasm" src="https://img.shields.io/badge/-wasm-624FE8.svg?style=flat"/>
+  <img alt="badge-jvm" src="http://img.shields.io/badge/-jvm-DB413D.svg?style=flat"/>
+</p>
+
+<p align="center">
 A Kotlin Multiplatform passkeys (WebAuthn) SDK with <b>one common API</b> and real native
 authenticators on Android, iOS, macOS, Windows, Linux, browser (Wasm), and JVM/Compose Desktop.
 </p>
@@ -34,6 +50,16 @@ reads the platform anchor implicitly from the composition (e.g. the Activity via
 > unified, the platform requirements are not. You must host the UI in an
 > **Activity** on Android, ship the **Associated Domains** entitlement on Apple,
 > and sign the desktop `.app`. See [Platform requirements](#platform-requirements).
+
+## Features
+
+- ✅ **One common API** — `create` / `authenticate` → `PasskeyResult`, identical on every target
+- ✅ **Real native authenticators** — Credential Manager, AuthenticationServices, Windows Hello, libfido2, `navigator.credentials`
+- ✅ **Compose Multiplatform** — `rememberPasskeyClient()` resolves the platform client + anchor for you
+- ✅ **7 targets** — Android, iOS, macOS, Windows, Linux, browser (Wasm), JVM / Compose Desktop
+- ✅ **Standard WebAuthn JSON** in and out — pairs with any WebAuthn server library
+- ✅ **Typed errors** — a `PasskeyException` hierarchy, no leaky platform exceptions
+- ✅ **Apple extensions** — `largeBlob` and `prf` where the OS supports them
 
 ## Install
 
@@ -207,11 +233,3 @@ bundle id. For iOS, set the `webcredentials:` domain in
 ./gradlew spotlessCheck detekt apiCheck
 ./gradlew :passkeys:assemble :passkeys:publishToMavenLocal
 ```
-
-## Related
-
-Need social / federated sign-in alongside passkeys?
-**[KMPAuth](https://github.com/mirzemehdi/KMPAuth)** is a Kotlin Multiplatform
-auth library for Google, Apple, GitHub, and Facebook sign-in (Firebase-backed)
-across Android, iOS, desktop, and web. It pairs well with this SDK — KMPAuth for
-federated providers, Passkeys KMP for passwordless WebAuthn.
