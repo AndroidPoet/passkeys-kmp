@@ -207,3 +207,11 @@ bundle id. For iOS, set the `webcredentials:` domain in
 ./gradlew spotlessCheck detekt apiCheck
 ./gradlew :passkeys:assemble :passkeys:publishToMavenLocal
 ```
+
+## Related
+
+Need social / federated sign-in alongside passkeys?
+**[KMPAuth](https://github.com/mirzemehdi/KMPAuth)** is a Kotlin Multiplatform
+auth library for Google, Apple, GitHub, and Facebook sign-in (Firebase-backed)
+across Android, iOS, desktop, and web. It pairs well with this SDK — KMPAuth for
+federated providers, Passkeys KMP for passwordless WebAuthn.
