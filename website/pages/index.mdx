@@ -1,0 +1,47 @@
+---
+title: Passkeys KMP
+description: One common passkeys API for Kotlin Multiplatform, backed by real native authenticators on Android, iOS, macOS, Windows, Linux, Wasm and JVM/Compose Desktop.
+---
+
+import { Hero } from '../components/Hero'
+import { Cards } from 'nextra/components'
+
+<Hero />
+
+**Passkeys KMP** gives you a single, fully typed Kotlin Multiplatform API for WebAuthn
+passkeys. You write one `create` / `authenticate` call site in `commonMain`, and each
+platform runs its own real native authenticator — Face ID, Touch ID, Windows Hello,
+fingerprint, or a roaming security key.
+
+```kotlin
+val passkeys = rememberPasskeyClient()   // resolves the platform client + its UI anchor
+
+when (val result = passkeys.create(registrationOptionsJson)) {   // or .authenticate(...)
+    is PasskeyResult.Success -> sendToBackend(result.value.rawJson) // verify on your server
+    is PasskeyResult.Failure -> handle(result.error.code, result.error.message)
+}
+```
+
+## Why Passkeys KMP
+
+- **One API, real native authenticators.** No web-view shims — the device's own platform
+  authenticator runs on every target.
+- **Result-first, no exceptions for control flow.** Every ceremony returns a
+  `PasskeyResult` you exhaustively `when` over.
+- **Typed errors.** Failures carry a stable `code` and `message`, so you handle
+  cancellation, timeouts, and unsupported platforms explicitly.
+- **Compose Multiplatform aware.** `rememberPasskeyClient()` wires up the right client and
+  its UI anchor for you.
+- **Server-truth by design.** The SDK runs only the device ceremony; trust is established
+  when your backend verifies `rawJson`.
+
+## Explore the docs
+
+<Cards>
+  <Cards.Card title="Getting Started" href="/getting-started" arrow />
+  <Cards.Card title="Usage" href="/usage" arrow />
+  <Cards.Card title="Results & Errors" href="/results-and-errors" arrow />
+  <Cards.Card title="Platforms" href="/platforms" arrow />
+  <Cards.Card title="Domain Setup" href="/domain-setup" arrow />
+  <Cards.Card title="Server Verification" href="/server-verification" arrow />
+</Cards>

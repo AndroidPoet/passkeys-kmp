@@ -1,0 +1,45 @@
+---
+title: Results & Errors
+description: Passkeys KMP is Result-first — every ceremony returns a typed PasskeyResult you exhaustively handle.
+---
+
+import { Callout } from 'nextra/components'
+
+# Results & Errors
+
+Passkeys KMP is **Result-first**. Ceremonies don't throw for control flow — they return a
+sealed `PasskeyResult` you exhaustively `when` over.
+
+```kotlin
+when (val result = passkeys.create(optionsJson)) {
+    is PasskeyResult.Success -> {
+        val rawJson = result.value.rawJson   // send to your backend to verify
+    }
+    is PasskeyResult.Failure -> {
+        val code = result.error.code         // stable, switchable code
+        val message = result.error.message   // human-readable detail
+    }
+}
+```
+
+## Success
+
+`PasskeyResult.Success` wraps the ceremony output. The field you care about is
+`value.rawJson` — the full WebAuthn response (attestation for `create`, assertion for
+`authenticate`) carrying every field a server library expects: challenge, origin, RP ID,
+signature, sign-count, and any `clientExtensionResults`.
+
+## Failure
+
+`PasskeyResult.Failure` carries a typed error with a stable `code` and a `message`. Handle
+the cases you care about explicitly — common ones include user cancellation, timeouts, no
+matching credential, and unsupported platform/OS.
+
+<Callout type="info">
+  Platform-specific and unsupported-OS conditions surface as a typed `PasskeyException`
+  (e.g. `PasskeyException.Unsupported`) — for example, an Apple extension requested on an OS
+  version too old fails **before** any UI is shown, rather than mid-ceremony.
+</Callout>
+
+Because the result type is sealed, the compiler forces you to handle both arms — there's no
+silent path where a cancelled or failed ceremony looks like a success.

@@ -1,0 +1,79 @@
+---
+title: Getting Started
+description: Install Passkeys KMP and run your first passkey ceremony.
+---
+
+import { Steps, Callout } from 'nextra/components'
+
+# Getting Started
+
+## Install
+
+Add the core SDK, plus the Compose helper if you use Compose Multiplatform:
+
+```kotlin
+implementation("io.github.androidpoet:passkeys:0.1.0")          // core SDK
+implementation("io.github.androidpoet:passkeys-compose:0.1.0")  // rememberPasskeyClient() (Compose MP)
+```
+
+The artifacts are published to **Maven Central** under the `io.github.androidpoet` group.
+
+## Your first ceremony
+
+<Steps>
+
+### Get options from your server
+
+Your backend generates the WebAuthn options JSON — crucially, a fresh `challenge`. The SDK
+never invents a challenge; it only runs the device ceremony against the one you pass in.
+
+### Resolve the platform client
+
+In Compose Multiplatform, `rememberPasskeyClient()` resolves the correct platform client and
+its UI anchor (the `Activity`, `UIWindow`, `NSWindow`, or `HWND` the system dialog attaches to).
+
+```kotlin
+val passkeys = rememberPasskeyClient()
+```
+
+### Run create / authenticate
+
+Both calls are suspend functions that return a `PasskeyResult`:
+
+```kotlin
+when (val result = passkeys.create(registrationOptionsJson)) {
+    is PasskeyResult.Success -> sendToBackend(result.value.rawJson)
+    is PasskeyResult.Failure -> handle(result.error.code, result.error.message)
+}
+```
+
+### Verify on your server
+
+POST `result.value.rawJson` back to your backend and verify it with a maintained WebAuthn
+server library before you trust the credential. See [Server Verification](/server-verification).
+
+</Steps>
+
+<Callout type="info">
+  A passkey is bound to your domain, so each platform needs proof you own it. Before the
+  ceremony will succeed on Android/iOS/macOS you must complete [Domain Setup](/domain-setup).
+</Callout>
+
+## Run the sample
+
+`:sample:composeApp` is one Compose Multiplatform app — the whole UI lives in `commonMain`.
+Supply your own domain via a `-P` flag:
+
+```sh
+./gradlew :sample:composeApp:installDebug -PpasskeysSampleRpId=your-domain.com   # Android
+./gradlew :sample:composeApp:run -PpasskeysSampleRpId=your-domain.com            # macOS desktop
+```
+
+…or put it in `local.properties` (gitignored) so you don't repeat it every build:
+
+```properties
+passkeysSampleRpId=your-domain.com
+passkeysSampleBundleId=com.your.app
+```
+
+A browser demo lives in `:sample:web`.

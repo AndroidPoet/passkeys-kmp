@@ -1,0 +1,60 @@
+---
+title: Platforms
+description: Every target, its native authenticator, the UI anchor, and one-time setup.
+---
+
+import { Callout } from 'nextra/components'
+
+# Platforms
+
+The same shared `create` / `authenticate` call drives each platform's own native
+authenticator. With Compose, the UI anchor is wired up for you by `rememberPasskeyClient()`.
+
+| Platform | Authenticator | Anchor (auto via Compose) | One-time setup |
+| --- | --- | --- | --- |
+| Android (API 28+) | Fingerprint / face / PIN | `Activity` | `assetlinks.json` |
+| iOS 16+ | Face ID / Touch ID | `UIWindow` | entitlement + AASA |
+| macOS 13+ | Touch ID | `NSWindow` | entitlement + AASA |
+| JVM / Compose Desktop | Touch ID (macOS) | window handle | signed `.app` + entitlement |
+| Browser (Wasm) | Platform / security key | — | HTTPS |
+| Windows 10 1903+ | Windows Hello / security key | `HWND` | — |
+| Linux | Roaming USB/NFC key only | — | `libfido2` + udev rules |
+
+See [Domain Setup](/domain-setup) for `assetlinks.json`, the apple-app-site-association file,
+and the Associated Domains entitlement.
+
+## JVM / Compose Desktop
+
+On macOS, `JvmPasskeyClient` drives the real Touch ID ceremony via a bundled native backend
+(`libPasskeysNative.dylib`, a Swift + JNI shim over AuthenticationServices). The ceremony
+**only runs from a signed `.app`** carrying the restricted
+`com.apple.developer.associated-domains` entitlement with an embedded provisioning profile —
+a bare `java -jar` will not launch it.
+
+On Windows/Linux (or if the native backend can't load) the JVM client fails loud. Use a
+browser handoff instead:
+
+```kotlin
+PasskeyBrowserHandoff.open("https://your-rp.example/passkey/sign-in")
+```
+
+## Browser (Wasm)
+
+The Wasm target uses the browser's own WebAuthn dialog. The only requirement is that the
+page is served over **HTTPS** (or `localhost` during development).
+
+## Windows
+
+`Windows 10 1903+` uses Windows Hello (face / fingerprint / PIN) or a roaming security key
+through the native WebAuthn API. No domain-association file is required.
+
+## Linux
+
+There is no platform/biometric authenticator on Linux, so `LinuxPasskeyClient` supports
+**roaming USB/NFC security keys only**, via libfido2. It requires `libfido2-dev` /
+`libfido2-devel` and udev rules granting non-root access.
+
+<Callout type="warning">
+  On Linux, platform and phone/hybrid passkeys are not available and fail with a typed
+  `PasskeyException`.
+</Callout>
