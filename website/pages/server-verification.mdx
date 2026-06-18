@@ -1,0 +1,43 @@
+---
+title: Server Verification
+description: The SDK runs only the device ceremony — a passkey is trustworthy only after your backend verifies it.
+---
+
+import { Callout } from 'nextra/components'
+
+# Server Verification
+
+<Callout type="warning">
+  The SDK only runs the on-device ceremony. A passkey is trustworthy **only after your
+  backend verifies it.** Never trust the client result on its own.
+</Callout>
+
+## The flow
+
+1. **Server generates options.** Your backend creates the options JSON with a fresh,
+   single-use `challenge` (plus RP ID, user, and allowed credentials).
+2. **Client runs the ceremony.** Pass that JSON to `create` / `authenticate`. The platform
+   authenticator produces a response.
+3. **Client returns `rawJson`.** POST `result.value.rawJson` back to your server.
+4. **Server verifies.** Validate the challenge, origin, RP ID, signature, and sign-count
+   against what you issued, then store (registration) or accept (authentication) the credential.
+
+## Use a maintained WebAuthn server library
+
+Don't hand-roll verification. `rawJson` carries every field these libraries expect:
+
+- [java-webauthn-server](https://github.com/Yubico/java-webauthn-server) (Yubico)
+- [webauthn4j](https://github.com/webauthn4j/webauthn4j)
+- [SimpleWebAuthn](https://simplewebauthn.dev/) (Node/TypeScript)
+- [py_webauthn](https://github.com/duo-labs/py_webauthn) (Python)
+
+## What the server checks
+
+A correct verification confirms, at minimum:
+
+- The **challenge** matches the one you issued and hasn't been used before.
+- The **origin** and **RP ID** match your domain.
+- The **signature** is valid for the stored credential public key.
+- The **sign-count** advanced (clone detection), where the authenticator reports one.
+
+Only after these pass should you treat the user as registered or authenticated.

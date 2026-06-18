@@ -1,0 +1,59 @@
+---
+title: Usage
+description: Create and authenticate passkeys from one shared call site across every platform.
+---
+
+import { Callout } from 'nextra/components'
+
+# Usage
+
+One call site, every platform. Both `create` and `authenticate` take a WebAuthn options
+JSON string and return a `PasskeyResult`.
+
+## Register a passkey
+
+```kotlin
+val passkeys = rememberPasskeyClient()
+
+when (val result = passkeys.create(registrationOptionsJson)) {
+    is PasskeyResult.Success -> sendToBackend(result.value.rawJson)
+    is PasskeyResult.Failure -> handle(result.error.code, result.error.message)
+}
+```
+
+`registrationOptionsJson` is the `PublicKeyCredentialCreationOptions` your server produced.
+On success, `result.value.rawJson` is the attestation response your backend verifies and stores.
+
+## Authenticate with a passkey
+
+```kotlin
+when (val result = passkeys.authenticate(authenticationOptionsJson)) {
+    is PasskeyResult.Success -> sendToBackend(result.value.rawJson)
+    is PasskeyResult.Failure -> handle(result.error.code, result.error.message)
+}
+```
+
+`authenticationOptionsJson` is the `PublicKeyCredentialRequestOptions` (a fresh challenge,
+the RP ID, and any allowed credentials). `rawJson` carries the assertion your backend verifies.
+
+## Getting a client without Compose
+
+`rememberPasskeyClient()` is a Compose convenience. Outside Compose, construct the
+platform client directly and give it the UI anchor it needs (the `Activity`, `UIWindow`,
+`NSWindow`, or `HWND`). See [Platforms](/platforms) for each target's anchor.
+
+<Callout type="warning">
+  The SDK only runs the on-device ceremony. A passkey is trustworthy **only after your
+  backend verifies** `rawJson` — never trust the client result alone. See
+  [Server Verification](/server-verification).
+</Callout>
+
+## Apple extensions
+
+On Apple targets the SDK supports WebAuthn extensions, gated by OS version:
+
+- `largeBlob`: iOS 17+ / macOS 14+
+- `prf`: iOS 18+ / macOS 15+
+
+Unsupported OS versions fail with `PasskeyException.Unsupported` **before** any UI appears.
+Extension outputs are preserved in `rawJson.clientExtensionResults`.

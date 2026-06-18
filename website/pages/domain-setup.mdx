@@ -1,0 +1,50 @@
+---
+title: Domain Setup
+description: A passkey is bound to your domain — host the association files and add the Apple entitlement.
+---
+
+import { Callout } from 'nextra/components'
+
+# Domain Setup
+
+A passkey is bound to your domain (the WebAuthn **RP ID**), so each platform needs proof you
+own it. Host these files under `https://your-domain.com/.well-known/`. The browser (Wasm)
+target just needs HTTPS.
+
+## Android — `assetlinks.json`
+
+```jsonc
+[{ "relation": ["delegate_permission/common.get_login_creds"],
+   "target": { "namespace": "android_app", "package_name": "com.your.app",
+               "sha256_cert_fingerprints": ["YOUR:APP:SIGNING:SHA256"] } }]
+```
+
+Use the SHA-256 fingerprint of the signing key you actually ship with — debug and release
+keys differ.
+
+## iOS & macOS — apple-app-site-association
+
+Served with **no file extension** and `Content-Type: application/json`:
+
+```jsonc
+{ "webcredentials": { "apps": ["TEAMID.com.your.app"] } }
+```
+
+Then add the **Associated Domains** entitlement to your Apple target:
+
+```xml
+<key>com.apple.developer.associated-domains</key>
+<array><string>webcredentials:your-domain.com</string></array>
+```
+
+<Callout type="info">
+  Apple caches the association file. While testing, the `webcredentials:your-domain.com?mode=developer`
+  variant plus the device's developer settings can speed up iteration.
+</Callout>
+
+## Windows, Linux, Browser
+
+- **Windows** needs no association file.
+- **Linux** (security keys only) needs no association file, but does require `libfido2` and
+  udev rules — see [Platforms](/platforms#linux).
+- **Browser (Wasm)** only needs the page served over **HTTPS** (or `localhost`).
