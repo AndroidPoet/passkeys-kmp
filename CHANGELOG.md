@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.1.2 - 2026-06-19
+
+First release of the macOS-native JVM desktop backend and the Linux/Windows
+native targets to reach Maven Central. The 0.1.1 tag was never published — its
+release build failed because the macOS CI/publish runners could not resolve the
+`libfido2` headers the `linuxX64` cinterop needs, and the JVM desktop test
+asserted a host-specific failure type.
+
+### Fixed
+
+- **CI / publish** — install `libfido2` (Homebrew) on the macOS runners that run
+  `apiCheck` and `publishAndReleaseToMavenCentral`. Both build the `linuxX64`
+  klib, whose `libfido2` cinterop needs `fido.h`; without it the build failed
+  with `'fido.h' file not found`.
+- **JVM desktop test** — `JvmPasskeyClientTest` now asserts the per-host failure
+  contract. On macOS the bundled native backend is present, so a minimal/invalid
+  request fails loud as `PasskeyException.Unexpected`; on hosts without an
+  in-process authenticator it short-circuits to `PasskeyException.Unsupported`.
+  The test previously assumed `Unsupported` unconditionally.
+
 ## 0.1.0 - 2026-06-18
 
 First public release. Published to Maven Central as

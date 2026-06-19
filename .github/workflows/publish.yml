@@ -15,6 +15,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Both the verify gate (apiCheck) and the publish build the linuxX64 klib,
+      # whose libfido2 cinterop needs fido.h. Homebrew installs it under
+      # /opt/homebrew/include, already on the .def's compilerOpts path.
+      - name: Install libfido2 (linuxX64 cinterop headers)
+        run: brew install libfido2
+
       - uses: actions/setup-java@v4
         with:
           distribution: zulu
