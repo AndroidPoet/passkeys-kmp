@@ -72,7 +72,7 @@ jobs:
 
       - name: Install libfido2 (Linux native cinterop)
         if: matrix.name == 'linux-wasm-jvm'
-        run: sudo apt-get update && sudo apt-get install -y libfido2-dev
+        run: sudo apt-get update && sudo apt-get install -y libfido2-dev libssl-dev
 
       - uses: actions/setup-java@v4
         with:

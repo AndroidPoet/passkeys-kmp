@@ -18,6 +18,13 @@ asserted a host-specific failure type.
   `apiCheck` and `publishAndReleaseToMavenCentral`. Both build the `linuxX64`
   klib, whose `libfido2` cinterop needs `fido.h`; without it the build failed
   with `'fido.h' file not found`.
+- **Linux native cinterop** — `fido.h` pulls in `<openssl/...>`, which
+  transitively includes `<openssl/opensslconf.h>`. On Debian/Ubuntu multiarch
+  that generated header lives under `/usr/include/x86_64-linux-gnu/openssl`,
+  which the cinterop clang indexer does not search by default, so the `linuxX64`
+  cinterop failed with `'openssl/opensslconf.h' file not found`. Add the
+  multiarch include path to `libfido2.def` (`compilerOpts.linux_x64`) and install
+  `libssl-dev` explicitly on the Linux runner.
 - **JVM desktop test** — `JvmPasskeyClientTest` now asserts the per-host failure
   contract. On macOS the bundled native backend is present, so a minimal/invalid
   request fails loud as `PasskeyException.Unexpected`; on hosts without an
