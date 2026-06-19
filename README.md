@@ -104,7 +104,8 @@ to `create` / `authenticate`, then POST `result.value.rawJson` back to verify an
 Use a maintained WebAuthn server library — [java-webauthn-server](https://github.com/Yubico/java-webauthn-server),
 [webauthn4j](https://github.com/webauthn4j/webauthn4j), [SimpleWebAuthn](https://simplewebauthn.dev/),
 or [py_webauthn](https://github.com/duo-labs/py_webauthn) — to check the challenge, origin,
-RP ID, signature, and sign-count. `rawJson` carries every field they expect.
+RP ID, signature, and sign-count. `rawJson` carries every field they expect. On a Kotlin/JVM
+backend you can use this project's own [`passkeys-server`](#server-relying-party) module.
 
 <details>
 <summary><b>JVM / Compose Desktop — native macOS passkeys</b></summary>
@@ -135,6 +136,34 @@ No platform/biometric authenticator, so `LinuxPasskeyClient` supports roaming US
 keys via libfido2. Requires `libfido2-dev` / `libfido2-devel` and udev rules granting non-root
 access. Platform and phone/hybrid passkeys fail with a typed `PasskeyException`.
 </details>
+
+## Server (Relying Party)
+
+For a Kotlin/JVM backend, `passkeys-server` is the matching server half. It wraps
+[java-webauthn-server](https://github.com/Yubico/java-webauthn-server) behind a small,
+explicit API and mints/verifies exactly the WebAuthn JSON the clients above produce.
+
+```kotlin
+implementation("io.github.androidpoet:passkeys-server:<version>")
+```
+
+```kotlin
+val relyingParty = PasskeyRelyingParty(
+    config = PasskeyServerConfig("example.com", "Example", setOf("https://example.com")),
+    credentials = InMemoryPasskeyCredentialStore(), // bring your own database
+    challenges = InMemoryPasskeyChallengeStore(),   // bring your own short-TTL store
+)
+
+routing {
+    passkeyRoutes(relyingParty) // POST /passkeys/{register,login}/{begin,finish}
+}
+```
+
+Each ceremony is two calls — a `begin` that returns the options the client passes to
+`create` / `authenticate`, and a `finish` that verifies the client's `rawJson`. Storage is
+bring-your-own via `PasskeyCredentialStore` / `PasskeyChallengeStore`; the in-memory
+implementations are for demos and tests. A runnable demo with a browser test page lives in
+[`:sample:server`](sample/server/README.md) — `./gradlew :sample:server:run`.
 
 ## Sample
 

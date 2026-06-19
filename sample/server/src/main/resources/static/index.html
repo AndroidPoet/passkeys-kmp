@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>passkeys-kmp · server demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; }
+    input, button { font: inherit; padding: .5rem .75rem; }
+    button { cursor: pointer; border-radius: .5rem; border: 1px solid #888; background: #f6f6f6; }
+    .row { display: flex; gap: .5rem; margin: 1rem 0; }
+    pre { background: #111; color: #0f0; padding: 1rem; border-radius: .5rem; overflow: auto; min-height: 4rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>passkeys-kmp server demo</h1>
+  <p>A minimal WebAuthn Relying Party backed by <code>passkeys-server</code>. Register a
+     passkey, then authenticate with it. Credentials are in-memory only.</p>
+
+  <div class="row">
+    <input id="username" placeholder="username" value="alice" />
+    <button id="register">Register</button>
+    <button id="login">Authenticate</button>
+  </div>
+  <pre id="log">ready.</pre>
+
+  <script>
+    const log = (...a) => { document.getElementById('log').textContent = a.map(x => typeof x === 'string' ? x : JSON.stringify(x, null, 2)).join('\n'); };
+    const post = async (path, body) => {
+      const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || res.statusText);
+      return json;
+    };
+
+    // A stable, opaque, base64url user handle per username (server would assign this).
+    const handleFor = (username) => {
+      const key = 'pk-handle:' + username;
+      let h = localStorage.getItem(key);
+      if (!h) {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        h = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        localStorage.setItem(key, h);
+      }
+      return h;
+    };
+
+    document.getElementById('register').onclick = async () => {
+      try {
+        const username = document.getElementById('username').value.trim();
+        log('starting registration…');
+        const begin = await post('/passkeys/register/begin', { handle: handleFor(username), name: username, displayName: username });
+        const options = PublicKeyCredential.parseCreationOptionsFromJSON(begin.publicKey);
+        const credential = await navigator.credentials.create({ publicKey: options });
+        const result = await post('/passkeys/register/finish', { ceremonyId: begin.ceremonyId, response: credential.toJSON() });
+        log('✅ registered', result);
+      } catch (e) { log('❌ ' + e.message); }
+    };
+
+    document.getElementById('login').onclick = async () => {
+      try {
+        const username = document.getElementById('username').value.trim();
+        log('starting authentication…');
+        const begin = await post('/passkeys/login/begin', { username });
+        const options = PublicKeyCredential.parseRequestOptionsFromJSON(begin.publicKey);
+        const credential = await navigator.credentials.get({ publicKey: options });
+        const result = await post('/passkeys/login/finish', { ceremonyId: begin.ceremonyId, response: credential.toJSON() });
+        log('✅ authenticated', result);
+      } catch (e) { log('❌ ' + e.message); }
+    };
+  </script>
+</body>
+</html>
