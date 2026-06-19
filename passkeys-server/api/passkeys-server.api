@@ -1,0 +1,88 @@
+public final class io/github/androidpoet/passkeys/server/InMemoryPasskeyChallengeStore : io/github/androidpoet/passkeys/server/PasskeyChallengeStore {
+	public fun <init> ()V
+	public fun put (Ljava/lang/String;Ljava/lang/String;)V
+	public fun take (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/github/androidpoet/passkeys/server/InMemoryPasskeyCredentialStore : io/github/androidpoet/passkeys/server/PasskeyCredentialStore {
+	public fun <init> ()V
+	public fun find (Ljava/lang/String;Ljava/lang/String;)Lio/github/androidpoet/passkeys/server/StoredPasskey;
+	public fun findByCredentialId (Ljava/lang/String;)Ljava/util/List;
+	public fun findByUsername (Ljava/lang/String;)Ljava/util/List;
+	public fun save (Lio/github/androidpoet/passkeys/server/StoredPasskey;)V
+	public fun updateSignatureCount (Ljava/lang/String;J)V
+	public fun userHandleForUsername (Ljava/lang/String;)Ljava/lang/String;
+	public fun usernameForUserHandle (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/github/androidpoet/passkeys/server/PasskeyAuthenticationOutcome {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V
+	public final fun getCredentialId ()Ljava/lang/String;
+	public final fun getSignatureCount ()J
+	public final fun getUserHandle ()Ljava/lang/String;
+	public final fun getUsername ()Ljava/lang/String;
+}
+
+public final class io/github/androidpoet/passkeys/server/PasskeyCeremonyRequest {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun getCeremonyId ()Ljava/lang/String;
+	public final fun getOptionsJson ()Ljava/lang/String;
+}
+
+public abstract interface class io/github/androidpoet/passkeys/server/PasskeyChallengeStore {
+	public abstract fun put (Ljava/lang/String;Ljava/lang/String;)V
+	public abstract fun take (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public abstract interface class io/github/androidpoet/passkeys/server/PasskeyCredentialStore {
+	public abstract fun find (Ljava/lang/String;Ljava/lang/String;)Lio/github/androidpoet/passkeys/server/StoredPasskey;
+	public abstract fun findByCredentialId (Ljava/lang/String;)Ljava/util/List;
+	public abstract fun findByUsername (Ljava/lang/String;)Ljava/util/List;
+	public abstract fun save (Lio/github/androidpoet/passkeys/server/StoredPasskey;)V
+	public abstract fun updateSignatureCount (Ljava/lang/String;J)V
+	public abstract fun userHandleForUsername (Ljava/lang/String;)Ljava/lang/String;
+	public abstract fun usernameForUserHandle (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/github/androidpoet/passkeys/server/PasskeyRelyingParty {
+	public fun <init> (Lio/github/androidpoet/passkeys/server/PasskeyServerConfig;Lio/github/androidpoet/passkeys/server/PasskeyCredentialStore;Lio/github/androidpoet/passkeys/server/PasskeyChallengeStore;)V
+	public final fun beginAuthentication (Ljava/lang/String;)Lio/github/androidpoet/passkeys/server/PasskeyCeremonyRequest;
+	public static synthetic fun beginAuthentication$default (Lio/github/androidpoet/passkeys/server/PasskeyRelyingParty;Ljava/lang/String;ILjava/lang/Object;)Lio/github/androidpoet/passkeys/server/PasskeyCeremonyRequest;
+	public final fun beginRegistration (Lio/github/androidpoet/passkeys/server/PasskeyUser;)Lio/github/androidpoet/passkeys/server/PasskeyCeremonyRequest;
+	public final fun finishAuthentication (Ljava/lang/String;Ljava/lang/String;)Lio/github/androidpoet/passkeys/server/PasskeyAuthenticationOutcome;
+	public final fun finishRegistration (Ljava/lang/String;Ljava/lang/String;)Lio/github/androidpoet/passkeys/server/StoredPasskey;
+}
+
+public final class io/github/androidpoet/passkeys/server/PasskeyRoutesKt {
+	public static final fun passkeyRoutes (Lio/ktor/server/routing/Route;Lio/github/androidpoet/passkeys/server/PasskeyRelyingParty;Ljava/lang/String;)V
+	public static synthetic fun passkeyRoutes$default (Lio/ktor/server/routing/Route;Lio/github/androidpoet/passkeys/server/PasskeyRelyingParty;Ljava/lang/String;ILjava/lang/Object;)V
+}
+
+public final class io/github/androidpoet/passkeys/server/PasskeyServerConfig {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;)V
+	public final fun getOrigins ()Ljava/util/Set;
+	public final fun getRpId ()Ljava/lang/String;
+	public final fun getRpName ()Ljava/lang/String;
+}
+
+public final class io/github/androidpoet/passkeys/server/PasskeyUser {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun getDisplayName ()Ljava/lang/String;
+	public final fun getHandle ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+}
+
+public final class io/github/androidpoet/passkeys/server/PasskeyVerificationException : java/lang/Exception {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+}
+
+public final class io/github/androidpoet/passkeys/server/StoredPasskey {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V
+	public final fun getCredentialId ()Ljava/lang/String;
+	public final fun getPublicKeyCose ()Ljava/lang/String;
+	public final fun getSignatureCount ()J
+	public final fun getUserHandle ()Ljava/lang/String;
+	public final fun getUsername ()Ljava/lang/String;
+}
+
