@@ -26,6 +26,9 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.server.test.host)
+            // The software authenticator test helper builds CBOR (COSE key /
+            // attestation object); Yubico pulls cbor at runtime only.
+            implementation(libs.upokecenter.cbor)
         }
     }
 }

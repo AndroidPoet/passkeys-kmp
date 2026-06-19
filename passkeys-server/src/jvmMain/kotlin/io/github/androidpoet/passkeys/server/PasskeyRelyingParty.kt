@@ -48,6 +48,11 @@ public class PasskeyRelyingParty(
             ).credentialRepository(YubicoCredentialRepository(credentials))
             .origins(config.origins)
             .allowOriginPort(true)
+            // Consumer passkeys are not attestation-verified: platform
+            // authenticators return "none" attestation and there is no
+            // enterprise attestation trust source. Requiring trusted attestation
+            // would reject ordinary passkey registrations.
+            .allowUntrustedAttestation(true)
             .build()
 
     /**
