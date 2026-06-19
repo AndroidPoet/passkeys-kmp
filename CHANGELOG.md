@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.0 - 2026-06-19
+
+Adds the server half of passkeys as a new published module.
+
+### Added
+
+- **`passkeys-server`** — an installable Kotlin/JVM WebAuthn Relying Party that
+  mints ceremony options and verifies the responses the clients produce. Wraps
+  [java-webauthn-server](https://github.com/Yubico/java-webauthn-server) behind a
+  thin, explicit API (`PasskeyRelyingParty` with begin/finish registration and
+  authentication); the underlying library is kept internal. Storage is
+  bring-your-own via `PasskeyCredentialStore` / `PasskeyChallengeStore` SPIs with
+  in-memory defaults, and `passkeyRoutes()` mounts the four ceremony endpoints on
+  Ktor. A full register→authenticate round-trip is verified end-to-end against an
+  in-process software authenticator. A runnable demo with a browser test page
+  lives in `:sample:server`.
+
+`passkeys` and `passkeys-compose` are unchanged in this release.
+
 ## 0.1.2 - 2026-06-19
 
 First release of the macOS-native JVM desktop backend and the Linux/Windows

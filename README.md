@@ -30,8 +30,9 @@ authenticators on Android, iOS, macOS, Windows, Linux, browser (Wasm), and JVM/C
 ## Install
 
 ```kotlin
-implementation("io.github.androidpoet:passkeys:0.1.1")          // core SDK
-implementation("io.github.androidpoet:passkeys-compose:0.1.1")  // rememberPasskeyClient() (Compose MP)
+implementation("io.github.androidpoet:passkeys:0.2.0")          // core SDK
+implementation("io.github.androidpoet:passkeys-compose:0.2.0")  // rememberPasskeyClient() (Compose MP)
+implementation("io.github.androidpoet:passkeys-server:0.2.0")   // Ktor Relying Party (JVM server)
 ```
 
 ## Usage
