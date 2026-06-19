@@ -7,6 +7,13 @@ headerFilter = fido.h fido/**
 # libfido2-dev -> /usr/include), Homebrew on Apple silicon, or /usr/local.
 compilerOpts = -I/usr/include -I/usr/local/include -I/opt/homebrew/include
 
+# fido.h pulls in <openssl/...>, whose headers transitively include
+# <openssl/opensslconf.h>. On Debian/Ubuntu multiarch that generated header
+# lives under /usr/include/x86_64-linux-gnu/openssl, which the cinterop clang
+# indexer does not search by default — add it so the linuxX64 cinterop resolves
+# the OpenSSL config header (libssl-dev provides it).
+compilerOpts.linux_x64 = -I/usr/include/x86_64-linux-gnu
+
 # Consumers (and test executables) link the system/distro libfido2 shared
 # library; the published klib itself is not linked.
 linkerOpts.linux_x64 = -L/usr/lib -L/usr/lib/x86_64-linux-gnu -lfido2

@@ -19,6 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # apiCheck compiles every native klib ABI, including linuxX64, whose
+      # libfido2 cinterop needs fido.h to generate bindings. Homebrew installs
+      # it under /opt/homebrew/include, already on the .def's compilerOpts path.
+      - name: Install libfido2 (linuxX64 cinterop headers)
+        run: brew install libfido2
+
       - uses: actions/setup-java@v4
         with:
           distribution: zulu
@@ -66,7 +72,7 @@ jobs:
 
       - name: Install libfido2 (Linux native cinterop)
         if: matrix.name == 'linux-wasm-jvm'
-        run: sudo apt-get update && sudo apt-get install -y libfido2-dev
+        run: sudo apt-get update && sudo apt-get install -y libfido2-dev libssl-dev
 
       - uses: actions/setup-java@v4
         with:
