@@ -220,9 +220,66 @@ class PasskeyPayloadMapperTest {
     }
 
     @Test
+    fun test_nativeCreationOptions_preservesCeremonyConstraints() {
+        val requestJson =
+            """
+            {
+              "publicKey": {
+                "challenge": "aGVsbG8",
+                "rp": { "id": "example.com" },
+                "user": { "id": "dXNlci0x", "name": "user" },
+                "pubKeyCredParams": [{ "type": "public-key", "alg": -8 }, { "type": "public-key", "alg": -257 }],
+                "excludeCredentials": [{ "id": "Y3JlZC0x", "type": "public-key", "transports": ["internal"] }],
+                "timeout": 120000,
+                "authenticatorSelection": { "residentKey": "required", "authenticatorAttachment": "platform" }
+              }
+            }
+            """.trimIndent()
+
+        val options = PasskeyPayloadMapper.nativeCreationOptions(requestJson)
+
+        assertEquals(listOf(-8L, -257L), options.algorithms)
+        assertEquals("Y3JlZC0x", options.excludeCredentials.single().id)
+        assertEquals(listOf("internal"), options.excludeCredentials.single().transports)
+        assertEquals(120_000L, options.timeout)
+        assertEquals(true, options.requiresDiscoverableCredential)
+        assertEquals("platform", options.authenticatorSelection?.authenticatorAttachment)
+    }
+
+    @Test
+    fun test_nativeCreationOptions_requireResidentKeyFallsBackToLegacyFlag() {
+        val legacy =
+            PasskeyPayloadMapper.nativeCreationOptions(
+                creationJson("""{"requireResidentKey":true}"""),
+            )
+        val preferred =
+            PasskeyPayloadMapper.nativeCreationOptions(
+                creationJson("""{"residentKey":"preferred","requireResidentKey":true}"""),
+            )
+
+        assertEquals(true, legacy.requiresDiscoverableCredential)
+        // An explicit residentKey wins over the legacy boolean.
+        assertEquals(false, preferred.requiresDiscoverableCredential)
+    }
+
+    @Test
+    fun test_authenticationResponse_withoutSignature_throwsInvalidPayload() {
+        val responseJson =
+            """{"id":"c","rawId":"c","type":"public-key","response":{"clientDataJSON":"cd","authenticatorData":"ad"}}"""
+
+        assertFailsWith<PasskeyException.InvalidPayload> {
+            PasskeyPayloadMapper.authenticationResponse(responseJson)
+        }
+    }
+
+    @Test
     fun test_creationRequestJson_whenMalformedJson_throwsInvalidPayload() {
         assertFailsWith<PasskeyException.InvalidPayload> {
             PasskeyPayloadMapper.creationRequestJson("{")
         }
     }
+
+    private fun creationJson(authenticatorSelection: String): String =
+        """{"challenge":"aGVsbG8","rp":{"id":"e.com"},"user":{"id":"dXNlci0x","name":"u"},""" +
+            """"authenticatorSelection":$authenticatorSelection}"""
 }

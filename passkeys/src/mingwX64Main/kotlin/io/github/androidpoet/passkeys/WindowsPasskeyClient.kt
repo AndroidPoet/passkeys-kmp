@@ -4,9 +4,11 @@ package io.github.androidpoet.passkeys
 
 import io.github.androidpoet.passkeys.internal.NativeAuthenticationOptions
 import io.github.androidpoet.passkeys.internal.NativeCreationOptions
+import io.github.androidpoet.passkeys.internal.NativeCredentialDescriptor
 import io.github.androidpoet.passkeys.internal.PasskeyPayloadMapper
 import io.github.androidpoet.passkeys.internal.decodeBase64Url
 import io.github.androidpoet.passkeys.internal.encodeBase64Url
+import io.github.androidpoet.passkeys.internal.passkeyResult
 import io.github.androidpoet.passkeys.models.PasskeyAuthenticationOptions
 import io.github.androidpoet.passkeys.models.PasskeyAuthenticationResponse
 import io.github.androidpoet.passkeys.models.PasskeyCreationOptions
@@ -21,8 +23,10 @@ import kotlinx.cinterop.UShortVar
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.allocPointerTo
+import kotlinx.cinterop.free
 import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.nativeHeap
 import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.readBytes
@@ -32,11 +36,16 @@ import kotlinx.cinterop.toCPointer
 import kotlinx.cinterop.toKStringFromUtf16
 import kotlinx.cinterop.value
 import kotlinx.cinterop.wcstr
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import platform.posix.GUID
 import platform.windows.HWND
 import webauthn.GetConsoleWindow
 import webauthn.GetForegroundWindow
@@ -53,9 +62,12 @@ import webauthn.WEBAUTHN_RP_ENTITY_INFORMATION
 import webauthn.WEBAUTHN_USER_ENTITY_INFORMATION
 import webauthn.WebAuthNAuthenticatorGetAssertion
 import webauthn.WebAuthNAuthenticatorMakeCredential
+import webauthn.WebAuthNCancelCurrentOperation
 import webauthn.WebAuthNFreeAssertion
 import webauthn.WebAuthNFreeCredentialAttestation
+import webauthn.WebAuthNGetCancellationId
 import webauthn.WebAuthNGetErrorName
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * [PasskeyClient] for Windows desktop, backed by the OS WebAuthn API
@@ -70,42 +82,62 @@ import webauthn.WebAuthNGetErrorName
  * (`HWND`, as a raw [Long]) so the system sheet is parented correctly; when 0,
  * it falls back to the foreground window and then the console window.
  *
- * The relying party's expected `origin` cannot be derived from the WebAuthn
- * options, so it defaults to `https://<rpId>`; pass [origin] to override.
+ * The server's `pubKeyCredParams`, `authenticatorSelection` (attachment,
+ * resident key, user verification), `excludeCredentials` and `timeout` are all
+ * forwarded. The blocking native call runs on [Dispatchers.IO]; cancelling the
+ * calling coroutine cancels the system sheet.
+ *
+ * A native client has no browser to establish the origin: `clientDataJSON.origin`
+ * is `https://<rpId>` unless [origin] is given. Your server must list that
+ * origin, and it is your app's job to only run options for your own RP.
  */
 public class WindowsPasskeyClient(
     private val windowHandle: Long = 0L,
     private val origin: String? = null,
 ) : PasskeyClient {
     override suspend fun create(options: PasskeyCreationOptions): PasskeyResult<PasskeyCreationResponse> =
-        runCatching {
+        passkeyResult {
             val opts = PasskeyPayloadMapper.nativeCreationOptions(options.requestJson)
             val clientData = clientDataJson("webauthn.create", opts.challenge, originFor(opts.rp.id))
-            PasskeyPayloadMapper.creationResponse(makeCredential(opts, clientData))
-        }.fold(
-            onSuccess = { PasskeyResult.Success(it) },
-            onFailure = { PasskeyResult.Failure(it.asPasskeyException()) },
-        )
+            val raw = cancellable { cancellationId -> makeCredential(opts, clientData, cancellationId) }
+            PasskeyPayloadMapper.creationResponse(raw)
+        }
 
     override suspend fun authenticate(
         options: PasskeyAuthenticationOptions,
     ): PasskeyResult<PasskeyAuthenticationResponse> =
-        runCatching {
+        passkeyResult {
             val opts = PasskeyPayloadMapper.nativeAuthenticationOptions(options.requestJson)
             val clientData = clientDataJson("webauthn.get", opts.challenge, originFor(opts.rpId))
-            PasskeyPayloadMapper.authenticationResponse(getAssertion(opts, clientData))
-        }.fold(
-            onSuccess = { PasskeyResult.Success(it) },
-            onFailure = { PasskeyResult.Failure(it.asPasskeyException()) },
-        )
+            val raw = cancellable { cancellationId -> getAssertion(opts, clientData, cancellationId) }
+            PasskeyPayloadMapper.authenticationResponse(raw)
+        }
 
     private fun originFor(rpId: String): String = origin ?: "https://$rpId"
 
-    private fun Throwable.asPasskeyException(): PasskeyException =
-        this as? PasskeyException ?: PasskeyPayloadMapper.exception(this)
+    // Runs the blocking native ceremony off the caller's thread and, if the
+    // caller is cancelled meanwhile, asks webauthn.dll to abort it so the system
+    // sheet closes and the worker returns promptly.
+    private suspend fun <T> cancellable(block: (CPointer<GUID>?) -> T): T {
+        val cancellationId = nativeHeap.alloc<GUID>()
+        val id: CPointer<GUID>? = if (WebAuthNGetCancellationId(cancellationId.ptr) == S_OK) cancellationId.ptr else null
+        try {
+            return coroutineScope {
+                val worker = async(Dispatchers.IO) { block(id) }
+                try {
+                    worker.await()
+                } catch (e: CancellationException) {
+                    id?.let { WebAuthNCancelCurrentOperation(it) }
+                    throw e
+                }
+            }
+        } finally {
+            nativeHeap.free(cancellationId)
+        }
+    }
 
     @Suppress("ThrowsCount") // each native step guards with a typed PasskeyException
-    private fun makeCredential(opts: NativeCreationOptions, clientData: String): String =
+    private fun makeCredential(opts: NativeCreationOptions, clientData: String, cancellationId: CPointer<GUID>?): String =
         memScoped {
             val clientDataBytes = clientData.encodeToByteArray()
 
@@ -124,7 +156,7 @@ public class WindowsPasskeyClient(
             user.pwszIcon = null
             user.pwszDisplayName = wide(opts.user.displayName ?: opts.user.name)
 
-            val coseParams = coseCredentialParameters()
+            val coseParams = coseCredentialParameters(opts.algorithms.ifEmpty { DEFAULT_COSE_ALGORITHMS })
 
             val clientDataStruct = alloc<WEBAUTHN_CLIENT_DATA>()
             clientDataStruct.dwVersion = CLIENT_DATA_VERSION
@@ -134,19 +166,19 @@ public class WindowsPasskeyClient(
 
             val makeOptions = alloc<WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS>()
             makeOptions.dwVersion = MAKE_CREDENTIAL_OPTIONS_VERSION
-            makeOptions.dwTimeoutMilliseconds = TIMEOUT_MS
+            makeOptions.dwTimeoutMilliseconds = timeoutMillis(opts.timeout)
             makeOptions.CredentialList.cCredentials = 0u
             makeOptions.CredentialList.pCredentials = null
             makeOptions.Extensions.cExtensions = 0u
             makeOptions.Extensions.pExtensions = null
-            makeOptions.dwAuthenticatorAttachment = ATTACHMENT_ANY
-            makeOptions.bRequireResidentKey = FALSE
+            makeOptions.dwAuthenticatorAttachment = attachment(opts.authenticatorSelection?.authenticatorAttachment)
+            makeOptions.bRequireResidentKey = if (opts.requiresDiscoverableCredential) TRUE else FALSE
             makeOptions.dwUserVerificationRequirement =
                 userVerification(opts.authenticatorSelection?.userVerification)
             makeOptions.dwAttestationConveyancePreference = attestationPreference(opts.attestation)
             makeOptions.dwFlags = 0u
-            makeOptions.pCancellationId = null
-            makeOptions.pExcludeCredentialList = null
+            makeOptions.pCancellationId = cancellationId
+            makeOptions.pExcludeCredentialList = credentialList(opts.excludeCredentials)
 
             val out = allocPointerTo<WEBAUTHN_CREDENTIAL_ATTESTATION>()
             val hr =
@@ -159,19 +191,27 @@ public class WindowsPasskeyClient(
                     makeOptions.ptr,
                     out.ptr,
                 )
-            val attestation = out.value ?: throw hrError(hr)
+            val attestation = out.value ?: throw hrError(hr, create = true)
             try {
-                if (hr != S_OK) throw hrError(hr)
+                if (hr != S_OK) throw hrError(hr, create = true)
                 val att = attestation.pointed
-                val responseJson = att.pbRegistrationResponseJSON.bytesOrEmpty(att.cbRegistrationResponseJSON)
-                if (att.dwVersion.toInt() >= CREDENTIAL_ATTESTATION_VERSION_8 && responseJson.isNotEmpty()) {
+                // Only read fields the returned struct version actually has:
+                // the ready-made response JSON exists from VERSION_8 onwards.
+                val version = att.dwVersion.toInt()
+                val responseJson =
+                    if (version >= CREDENTIAL_ATTESTATION_VERSION_8) {
+                        att.pbRegistrationResponseJSON.bytesOrEmpty(att.cbRegistrationResponseJSON)
+                    } else {
+                        ByteArray(0)
+                    }
+                if (responseJson.isNotEmpty()) {
                     responseJson.decodeToString()
                 } else {
                     registrationJson(
                         credentialId = att.pbCredentialId.bytesOrEmpty(att.cbCredentialId),
                         attestationObject = att.pbAttestationObject.bytesOrEmpty(att.cbAttestationObject),
                         clientData = clientDataBytes,
-                        transports = transports(att.dwVersion.toInt(), att.dwUsedTransport),
+                        transports = transports(version, if (version >= CREDENTIAL_ATTESTATION_VERSION_3) att.dwUsedTransport else 0u),
                     )
                 }
             } finally {
@@ -180,7 +220,7 @@ public class WindowsPasskeyClient(
         }
 
     @Suppress("ThrowsCount") // each native step guards with a typed PasskeyException
-    private fun getAssertion(opts: NativeAuthenticationOptions, clientData: String): String =
+    private fun getAssertion(opts: NativeAuthenticationOptions, clientData: String, cancellationId: CPointer<GUID>?): String =
         memScoped {
             val clientDataBytes = clientData.encodeToByteArray()
 
@@ -192,7 +232,7 @@ public class WindowsPasskeyClient(
 
             val getOptions = alloc<WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS>()
             getOptions.dwVersion = GET_ASSERTION_OPTIONS_VERSION
-            getOptions.dwTimeoutMilliseconds = TIMEOUT_MS
+            getOptions.dwTimeoutMilliseconds = timeoutMillis(opts.timeout)
             getOptions.CredentialList.cCredentials = 0u
             getOptions.CredentialList.pCredentials = null
             getOptions.Extensions.cExtensions = 0u
@@ -202,8 +242,8 @@ public class WindowsPasskeyClient(
             getOptions.dwFlags = 0u
             getOptions.pwszU2fAppId = null
             getOptions.pbU2fAppId = null
-            getOptions.pCancellationId = null
-            getOptions.pAllowCredentialList = allowCredentialList(opts)
+            getOptions.pCancellationId = cancellationId
+            getOptions.pAllowCredentialList = credentialList(opts.allowCredentials)
 
             val out = allocPointerTo<WEBAUTHN_ASSERTION>()
             val hr =
@@ -214,12 +254,18 @@ public class WindowsPasskeyClient(
                     getOptions.ptr,
                     out.ptr,
                 )
-            val assertionPtr = out.value ?: throw hrError(hr)
+            val assertionPtr = out.value ?: throw hrError(hr, create = false)
             try {
-                if (hr != S_OK) throw hrError(hr)
+                if (hr != S_OK) throw hrError(hr, create = false)
                 val assertion = assertionPtr.pointed
-                val responseJson = assertion.pbAuthenticationResponseJSON.bytesOrEmpty(assertion.cbAuthenticationResponseJSON)
-                if (assertion.dwVersion.toInt() >= ASSERTION_VERSION_6 && responseJson.isNotEmpty()) {
+                val version = assertion.dwVersion.toInt()
+                val responseJson =
+                    if (version >= ASSERTION_VERSION_6) {
+                        assertion.pbAuthenticationResponseJSON.bytesOrEmpty(assertion.cbAuthenticationResponseJSON)
+                    } else {
+                        ByteArray(0)
+                    }
+                if (responseJson.isNotEmpty()) {
                     responseJson.decodeToString()
                 } else {
                     assertionJson(
@@ -240,23 +286,22 @@ public class WindowsPasskeyClient(
     private fun resolveWindow(): HWND? =
         if (windowHandle != 0L) windowHandle.toCPointer() else GetForegroundWindow() ?: GetConsoleWindow()
 
-    private fun AutofreeScope.coseCredentialParameters(): WEBAUTHN_COSE_CREDENTIAL_PARAMETERS {
-        val params = allocArray<WEBAUTHN_COSE_CREDENTIAL_PARAMETER>(COSE_ALGORITHMS.size)
-        COSE_ALGORITHMS.forEachIndexed { index, alg ->
+    private fun AutofreeScope.coseCredentialParameters(algorithms: List<Long>): WEBAUTHN_COSE_CREDENTIAL_PARAMETERS {
+        val params = allocArray<WEBAUTHN_COSE_CREDENTIAL_PARAMETER>(algorithms.size)
+        algorithms.forEachIndexed { index, alg ->
             params[index].dwVersion = COSE_CREDENTIAL_PARAMETER_VERSION
             params[index].pwszCredentialType = wide(CREDENTIAL_TYPE_PUBLIC_KEY)
-            params[index].lAlg = alg
+            params[index].lAlg = alg.toInt()
         }
         val coseParams = alloc<WEBAUTHN_COSE_CREDENTIAL_PARAMETERS>()
-        coseParams.cCredentialParameters = COSE_ALGORITHMS.size.toUInt()
+        coseParams.cCredentialParameters = algorithms.size.toUInt()
         coseParams.pCredentialParameters = params
         return coseParams
     }
 
-    private fun AutofreeScope.allowCredentialList(
-        opts: NativeAuthenticationOptions,
+    private fun AutofreeScope.credentialList(
+        descriptors: List<NativeCredentialDescriptor>,
     ): CPointer<WEBAUTHN_CREDENTIAL_LIST>? {
-        val descriptors = opts.allowCredentials
         if (descriptors.isEmpty()) return null
         val entries = allocArray<WEBAUTHN_CREDENTIAL_EX>(descriptors.size)
         val pointers = allocArray<CPointerVar<WEBAUTHN_CREDENTIAL_EX>>(descriptors.size)
@@ -266,7 +311,7 @@ public class WindowsPasskeyClient(
             entries[index].cbId = id.size.toUInt()
             entries[index].pbId = bytePtr(id)
             entries[index].pwszCredentialType = wide(CREDENTIAL_TYPE_PUBLIC_KEY)
-            entries[index].dwTransports = 0u
+            entries[index].dwTransports = transportMask(descriptor.transports)
             pointers[index] = entries[index].ptr
         }
         val list = alloc<WEBAUTHN_CREDENTIAL_LIST>()
@@ -295,6 +340,7 @@ public class WindowsPasskeyClient(
             put("id", credentialId.encodeBase64Url())
             put("rawId", credentialId.encodeBase64Url())
             put("type", "public-key")
+            putJsonObject("clientExtensionResults") {}
             putJsonObject("response") {
                 put("clientDataJSON", clientData.encodeBase64Url())
                 put("attestationObject", attestationObject.encodeBase64Url())
@@ -313,6 +359,7 @@ public class WindowsPasskeyClient(
             put("id", credentialId.encodeBase64Url())
             put("rawId", credentialId.encodeBase64Url())
             put("type", "public-key")
+            putJsonObject("clientExtensionResults") {}
             putJsonObject("response") {
                 put("clientDataJSON", clientData.encodeBase64Url())
                 put("authenticatorData", authenticatorData.encodeBase64Url())
@@ -320,6 +367,9 @@ public class WindowsPasskeyClient(
                 if (userHandle.isNotEmpty()) put("userHandle", userHandle.encodeBase64Url())
             }
         }.toString()
+
+    private fun timeoutMillis(timeout: Long?): UInt =
+        timeout?.takeIf { it > 0 }?.coerceAtMost(UInt.MAX_VALUE.toLong())?.toUInt() ?: DEFAULT_TIMEOUT_MS
 
     private fun userVerification(value: String?): UInt =
         when (value) {
@@ -329,12 +379,32 @@ public class WindowsPasskeyClient(
             else -> UV_ANY
         }
 
+    private fun attachment(value: String?): UInt =
+        when (value) {
+            "platform" -> ATTACHMENT_PLATFORM
+            "cross-platform" -> ATTACHMENT_CROSS_PLATFORM
+            else -> ATTACHMENT_ANY
+        }
+
     private fun attestationPreference(value: String?): UInt =
         when (value) {
             "none" -> ATTESTATION_NONE
             "indirect" -> ATTESTATION_INDIRECT
             "direct" -> ATTESTATION_DIRECT
             else -> ATTESTATION_ANY
+        }
+
+    private fun transportMask(transports: List<String>): UInt =
+        transports.fold(0u) { mask, transport ->
+            mask or
+                when (transport) {
+                    "usb" -> TRANSPORT_USB
+                    "nfc" -> TRANSPORT_NFC
+                    "ble" -> TRANSPORT_BLE
+                    "internal" -> TRANSPORT_INTERNAL
+                    "hybrid" -> TRANSPORT_HYBRID
+                    else -> 0u
+                }
         }
 
     private fun transports(version: Int, usedTransport: UInt): List<String> {
@@ -348,14 +418,17 @@ public class WindowsPasskeyClient(
         }.ifEmpty { listOf("internal") }
     }
 
-    private fun hrError(hr: Int): PasskeyException {
+    private fun hrError(hr: Int, create: Boolean): PasskeyException {
         val name = WebAuthNGetErrorName(hr)?.toKStringFromUtf16() ?: "UnknownError"
         val message = "WebAuthn failed: $name (hr=0x${hr.toUInt().toString(HEX_RADIX)})"
+        val cause = IllegalStateException(message)
         return when (name) {
-            "NotAllowedError" -> PasskeyException.UserCanceled(IllegalStateException(message))
-            "InvalidStateError", "ConstraintError" -> PasskeyException.DomError(message)
-            "NotSupportedError" -> PasskeyException.Unsupported(IllegalStateException(message))
-            else -> PasskeyException.Unexpected(IllegalStateException(message))
+            "NotAllowedError" -> PasskeyException.UserCanceled(cause)
+            // On create, InvalidStateError means an excludeCredentials entry matched.
+            "InvalidStateError" -> if (create) PasskeyException.CredentialExcluded(cause) else PasskeyException.DomError(message, cause)
+            "ConstraintError" -> PasskeyException.DomError(message, cause)
+            "NotSupportedError" -> PasskeyException.Unsupported(cause)
+            else -> PasskeyException.Unexpected(cause)
         }
     }
 
@@ -374,8 +447,9 @@ public class WindowsPasskeyClient(
     private companion object {
         private const val S_OK = 0
         private const val FALSE = 0
+        private const val TRUE = 1
         private const val HEX_RADIX = 16
-        private const val TIMEOUT_MS = 60_000u
+        private const val DEFAULT_TIMEOUT_MS = 60_000u
 
         private const val RP_INFO_VERSION = 1u
         private const val USER_INFO_VERSION = 1u
@@ -385,11 +459,13 @@ public class WindowsPasskeyClient(
 
         // Conservative option struct versions: VERSION_3 (make) / VERSION_4 (get)
         // are present on every webauthn.dll since Windows 10 1903 and cover all
-        // fields this client sets (allow/exclude lists, UV, attachment).
+        // fields this client sets (allow/exclude lists, UV, attachment,
+        // cancellation id).
         private const val MAKE_CREDENTIAL_OPTIONS_VERSION = 3u
         private const val GET_ASSERTION_OPTIONS_VERSION = 4u
 
-        // Output struct versions that first carry the ready-made response JSON.
+        // Output struct versions: VERSION_3 adds dwUsedTransport; VERSION_8 /
+        // VERSION_6 first carry the ready-made response JSON.
         private const val CREDENTIAL_ATTESTATION_VERSION_3 = 3
         private const val CREDENTIAL_ATTESTATION_VERSION_8 = 8
         private const val ASSERTION_VERSION_6 = 6
@@ -397,10 +473,12 @@ public class WindowsPasskeyClient(
         private const val HASH_ALG_SHA_256 = "SHA-256"
         private const val CREDENTIAL_TYPE_PUBLIC_KEY = "public-key"
 
-        // COSE algorithm identifiers: ES256 (-7) and RS256 (-257).
-        private val COSE_ALGORITHMS = intArrayOf(-7, -257)
+        // COSE algorithm identifiers offered when the server lists none: ES256 (-7) and RS256 (-257).
+        private val DEFAULT_COSE_ALGORITHMS = listOf(-7L, -257L)
 
         private const val ATTACHMENT_ANY = 0u
+        private const val ATTACHMENT_PLATFORM = 1u
+        private const val ATTACHMENT_CROSS_PLATFORM = 2u
 
         private const val UV_ANY = 0u
         private const val UV_REQUIRED = 1u

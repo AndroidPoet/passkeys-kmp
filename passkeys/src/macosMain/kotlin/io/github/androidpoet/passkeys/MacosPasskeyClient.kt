@@ -10,10 +10,15 @@ import platform.AppKit.NSWindow
  * on macOS is an [NSWindow] rather than a `UIWindow`. The system shows the
  * Touch ID / passkey sheet parented to that window.
  *
- * @param window the window AuthenticationServices parents its system UI to.
+ * @param windowProvider resolves, at ceremony time, the window
+ *   AuthenticationServices parents its system UI to — so a multi-window or
+ *   scene-based app always presents on the current one.
  *   Requires macOS 13 (Ventura)+ and an Associated Domains entitlement
  *   (`webcredentials:your-domain.com`).
  */
 public class MacosPasskeyClient(
-    window: NSWindow,
-) : PasskeyClient by ApplePasskeyClient({ window })
+    windowProvider: () -> NSWindow,
+) : PasskeyClient by ApplePasskeyClient(windowProvider) {
+    /** Anchors every ceremony to one fixed [window]. */
+    public constructor(window: NSWindow) : this({ window })
+}

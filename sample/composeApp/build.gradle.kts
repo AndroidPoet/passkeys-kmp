@@ -35,6 +35,7 @@ val generateSampleConfig =
     tasks.register("generateSampleConfig") {
         val outputDir = layout.buildDirectory.dir("generated/sampleConfig/kotlin")
         val rpId = passkeysSampleRpId
+        inputs.property("rpId", rpId)
         outputs.dir(outputDir)
         doLast {
             val pkg = outputDir.get().dir("io/github/androidpoet/passkeys/composeapp").asFile

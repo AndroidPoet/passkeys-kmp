@@ -65,11 +65,15 @@ public data class PasskeyCreationResponse(
  * @property type the credential type, typically `"public-key"`.
  * @property authenticatorAttachment `"platform"` or `"cross-platform"`, if reported.
  * @property clientDataJson the client data JSON (base64url).
- * @property authenticatorData the authenticator data (base64url), if present.
- * @property signature the assertion signature (base64url), if present.
+ * @property authenticatorData the authenticator data (base64url).
+ * @property signature the assertion signature (base64url).
  * @property userHandle the user handle returned by the authenticator (base64url), if present.
  * @property rawJson the full WebAuthn authentication response JSON — the source of truth to verify server-side.
  * @property clientExtensionResultsJson the client extension results JSON, if any extensions were requested.
+ *   **`prf.results` is client-side key material**: when you use the PRF
+ *   extension to derive encryption keys, keep those bytes on the device and
+ *   strip `clientExtensionResults.prf` from what you log or send to a server
+ *   that does not need it.
  */
 public data class PasskeyAuthenticationResponse(
     public val id: String,
@@ -77,8 +81,8 @@ public data class PasskeyAuthenticationResponse(
     public val type: String,
     public val authenticatorAttachment: String?,
     public val clientDataJson: String,
-    public val authenticatorData: String?,
-    public val signature: String?,
+    public val authenticatorData: String,
+    public val signature: String,
     public val userHandle: String?,
     public val rawJson: String,
     public val clientExtensionResultsJson: String? = null,

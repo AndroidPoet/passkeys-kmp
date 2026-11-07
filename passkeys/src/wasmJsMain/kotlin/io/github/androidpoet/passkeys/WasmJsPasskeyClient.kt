@@ -1,6 +1,7 @@
 package io.github.androidpoet.passkeys
 
 import io.github.androidpoet.passkeys.internal.PasskeyPayloadMapper
+import io.github.androidpoet.passkeys.internal.passkeyResult
 import io.github.androidpoet.passkeys.models.PasskeyAuthenticationOptions
 import io.github.androidpoet.passkeys.models.PasskeyAuthenticationResponse
 import io.github.androidpoet.passkeys.models.PasskeyCreationOptions
@@ -8,6 +9,7 @@ import io.github.androidpoet.passkeys.models.PasskeyCreationResponse
 import kotlinx.coroutines.await
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.js.Promise
 
 /**
@@ -22,46 +24,41 @@ import kotlin.js.Promise
  *
  * Requires a secure context (HTTPS or `localhost`) and a browser that supports
  * the WebAuthn JSON serialization methods; older browsers fail with
- * [PasskeyException.Unsupported].
+ * [PasskeyException.Unsupported]. Cancelling the calling coroutine aborts the
+ * in-flight browser ceremony.
  */
 public class WasmJsPasskeyClient : PasskeyClient {
     override suspend fun create(options: PasskeyCreationOptions): PasskeyResult<PasskeyCreationResponse> =
-        runCeremony(CREATE, PasskeyPayloadMapper.creationRequestJson(options.requestJson))
-            .fold(
-                onSuccess = { PasskeyResult.Success(PasskeyPayloadMapper.creationResponse(it)) },
-                onFailure = { PasskeyResult.Failure(it.toPasskeyException()) },
-            )
+        passkeyResult {
+            val requestJson = PasskeyPayloadMapper.creationRequestJson(options.requestJson)
+            PasskeyPayloadMapper.creationResponse(runCeremony(CREATE, requestJson))
+        }
 
     override suspend fun authenticate(
         options: PasskeyAuthenticationOptions,
     ): PasskeyResult<PasskeyAuthenticationResponse> =
-        runCeremony(GET, PasskeyPayloadMapper.authenticationRequestJson(options.requestJson))
-            .fold(
-                onSuccess = { PasskeyResult.Success(PasskeyPayloadMapper.authenticationResponse(it)) },
-                onFailure = { PasskeyResult.Failure(it.toPasskeyException()) },
-            )
+        passkeyResult {
+            val requestJson = PasskeyPayloadMapper.authenticationRequestJson(options.requestJson)
+            PasskeyPayloadMapper.authenticationResponse(runCeremony(GET, requestJson))
+        }
 
-    // Drives the ceremony in JS and returns the WebAuthn response JSON, or a
-    // typed failure. The JS side never rejects: it resolves an {ok,...} wrapper
-    // so DOMException names survive the boundary (Kotlin/Wasm can't read them
-    // off a thrown JS value directly).
-    private suspend fun runCeremony(type: String, requestJson: String): Result<String> {
+    // Drives the ceremony in JS and returns the WebAuthn response JSON, or
+    // throws a typed PasskeyException. The JS side never rejects: it resolves
+    // an {ok,...} wrapper so DOMException names survive the boundary
+    // (Kotlin/Wasm can't read them off a thrown JS value directly).
+    private suspend fun runCeremony(type: String, requestJson: String): String {
+        val controller = newAbortController()
         val raw =
             try {
-                runCeremonyJs(requestJson, type).await<JsString>().toString()
-            } catch (e: Throwable) {
-                return Result.failure(PasskeyException.Unexpected(e))
+                runCeremonyJs(requestJson, type, controller).await<JsString>().toString()
+            } catch (e: CancellationException) {
+                abort(controller)
+                throw e
             }
         val outcome = json.decodeFromString<CeremonyOutcome>(raw)
-        return if (outcome.ok && outcome.json != null) {
-            Result.success(outcome.json)
-        } else {
-            Result.failure(domException(outcome.name, outcome.message))
-        }
+        if (outcome.ok && outcome.json != null) return outcome.json
+        throw domException(type, outcome.name, outcome.message)
     }
-
-    private fun Throwable.toPasskeyException(): PasskeyException =
-        this as? PasskeyException ?: PasskeyPayloadMapper.exception(this)
 
     private companion object {
         const val CREATE = "create"
@@ -80,22 +77,30 @@ private data class CeremonyOutcome(
 
 // Maps WebAuthn DOMException names to the shared PasskeyException hierarchy,
 // matching the distinctions the Android/iOS clients already surface.
-private fun domException(name: String, message: String): PasskeyException {
+private fun domException(type: String, name: String, message: String): PasskeyException {
     val cause = IllegalStateException("$name: $message")
     return when (name) {
         "NotAllowedError" -> PasskeyException.UserCanceled(cause)
         "AbortError" -> PasskeyException.Interrupted(cause)
         "NotSupportedError" -> PasskeyException.Unsupported(cause)
-        "InvalidStateError", "SecurityError" -> PasskeyException.DomError(message, cause)
+        // On create, InvalidStateError means an excludeCredentials entry matched.
+        "InvalidStateError" -> if (type == "create") PasskeyException.CredentialExcluded(cause) else PasskeyException.DomError(message, cause)
+        "SecurityError" -> PasskeyException.DomError(message, cause)
         else -> PasskeyException.Unexpected(cause)
     }
 }
 
+private fun newAbortController(): JsAny = js("new AbortController()")
+
+@Suppress("UnusedPrivateMember")
+private fun abort(controller: JsAny): Unit = js("controller.abort()")
+
 // Runs the WebAuthn ceremony entirely in JS and resolves a JSON wrapper string.
 // Uses the browser's JSON (de)serialization so base64url <-> ArrayBuffer
-// conversion is handled natively.
+// conversion is handled natively; the AbortController signal lets Kotlin
+// cancellation dismiss the browser's passkey UI.
 @Suppress("UnusedPrivateMember")
-private fun runCeremonyJs(requestJson: String, type: String): Promise<JsString> =
+private fun runCeremonyJs(requestJson: String, type: String, controller: JsAny): Promise<JsString> =
     js(
         """
         (async () => {
@@ -107,10 +112,10 @@ private fun runCeremonyJs(requestJson: String, type: String): Promise<JsString> 
             let cred;
             if (type === 'create') {
               const options = PublicKeyCredential.parseCreationOptionsFromJSON(JSON.parse(requestJson));
-              cred = await navigator.credentials.create({ publicKey: options });
+              cred = await navigator.credentials.create({ publicKey: options, signal: controller.signal });
             } else {
               const options = PublicKeyCredential.parseRequestOptionsFromJSON(JSON.parse(requestJson));
-              cred = await navigator.credentials.get({ publicKey: options });
+              cred = await navigator.credentials.get({ publicKey: options, signal: controller.signal });
             }
             return JSON.stringify({ ok: true, json: JSON.stringify(cred.toJSON()) });
           } catch (e) {

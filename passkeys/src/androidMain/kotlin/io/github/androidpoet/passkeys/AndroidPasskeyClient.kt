@@ -10,6 +10,7 @@ import androidx.credentials.PublicKeyCredential
 import androidx.credentials.exceptions.CreateCredentialException
 import androidx.credentials.exceptions.GetCredentialException
 import io.github.androidpoet.passkeys.internal.PasskeyPayloadMapper
+import io.github.androidpoet.passkeys.internal.passkeyResult
 import io.github.androidpoet.passkeys.models.PasskeyAuthenticationOptions
 import io.github.androidpoet.passkeys.models.PasskeyAuthenticationResponse
 import io.github.androidpoet.passkeys.models.PasskeyCreationOptions
@@ -24,29 +25,28 @@ public class AndroidPasskeyClient : PasskeyClient {
         this.credentialProvider = credentialProvider
     }
 
+    // Normalization, the Credential Manager call and response parsing all sit
+    // inside one boundary: a malformed provider response is a Failure, never a
+    // crash, and coroutine cancellation propagates instead of becoming one.
     override suspend fun create(options: PasskeyCreationOptions): PasskeyResult<PasskeyCreationResponse> =
-        runCatching {
+        passkeyResult(mapError = { it.toPasskeyException() }) {
             val requestJson = PasskeyPayloadMapper.creationRequestJson(options.requestJson)
-            credentialProvider.create(
-                requestJson = requestJson,
-                preferImmediatelyAvailableCredentials = options.preferImmediatelyAvailableCredentials,
-                isConditionalCreateRequest = options.isConditionalCreateRequest,
-            )
-        }.fold(
-            onSuccess = { PasskeyResult.Success(PasskeyPayloadMapper.creationResponse(it)) },
-            onFailure = { PasskeyResult.Failure(it.toPasskeyException()) },
-        )
+            val responseJson =
+                credentialProvider.create(
+                    requestJson = requestJson,
+                    preferImmediatelyAvailableCredentials = options.preferImmediatelyAvailableCredentials,
+                    isConditionalCreateRequest = options.isConditionalCreateRequest,
+                )
+            PasskeyPayloadMapper.creationResponse(responseJson)
+        }
 
     override suspend fun authenticate(
         options: PasskeyAuthenticationOptions,
     ): PasskeyResult<PasskeyAuthenticationResponse> =
-        runCatching {
+        passkeyResult(mapError = { it.toPasskeyException() }) {
             val requestJson = PasskeyPayloadMapper.authenticationRequestJson(options.requestJson)
-            credentialProvider.authenticate(requestJson)
-        }.fold(
-            onSuccess = { PasskeyResult.Success(PasskeyPayloadMapper.authenticationResponse(it)) },
-            onFailure = { PasskeyResult.Failure(it.toPasskeyException()) },
-        )
+            PasskeyPayloadMapper.authenticationResponse(credentialProvider.authenticate(requestJson))
+        }
 
     private fun Throwable.toPasskeyException(): PasskeyException =
         when (this) {

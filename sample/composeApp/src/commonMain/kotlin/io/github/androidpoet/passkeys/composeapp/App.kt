@@ -58,7 +58,7 @@ fun App(rpId: String = RP_ID) {
                         scope.launch {
                             status =
                                 when (val r = passkeys.create(registrationOptions(rpId))) {
-                                    is PasskeyResult.Success -> "✅ Passkey created successfully\n\n${r.value.rawJson}"
+                                    is PasskeyResult.Success -> "✅ Registration response created — verify it on your server\n\n${r.value.rawJson}"
                                     is PasskeyResult.Failure -> "❌ ${r.error.message} (${r.error.code})"
                                 }
                             busy = false
@@ -75,7 +75,8 @@ fun App(rpId: String = RP_ID) {
                         scope.launch {
                             status =
                                 when (val r = passkeys.authenticate(authenticationOptions(rpId))) {
-                                    is PasskeyResult.Success -> "✅ Login successful\n\n${r.value.rawJson}"
+                                    is PasskeyResult.Success ->
+                                        "✅ Assertion created — not signed in until your server verifies it\n\n${r.value.rawJson}"
                                     is PasskeyResult.Failure -> "❌ ${r.error.message} (${r.error.code})"
                                 }
                             busy = false

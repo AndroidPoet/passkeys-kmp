@@ -7,9 +7,27 @@ internal data class NativeCreationOptions(
     val challenge: String,
     val rp: NativeRelyingParty,
     val user: NativeUser,
+    val pubKeyCredParams: List<NativePubKeyCredParam> = emptyList(),
+    val excludeCredentials: List<NativeCredentialDescriptor> = emptyList(),
+    val timeout: Long? = null,
     val attestation: String? = null,
     val authenticatorSelection: NativeAuthenticatorSelection? = null,
     val extensions: NativeCreationExtensions? = null,
+) {
+    /** The COSE algorithms the server accepts, in preference order; empty means "any". */
+    val algorithms: List<Long> get() = pubKeyCredParams.filter { it.type == "public-key" }.map { it.alg }
+
+    /** Whether the server requires a discoverable (resident) credential. */
+    val requiresDiscoverableCredential: Boolean
+        get() =
+            authenticatorSelection?.residentKey == "required" ||
+                (authenticatorSelection?.residentKey == null && authenticatorSelection?.requireResidentKey == true)
+}
+
+@Serializable
+internal data class NativePubKeyCredParam(
+    val type: String,
+    val alg: Long,
 )
 
 @Serializable
@@ -28,6 +46,9 @@ internal data class NativeUser(
 @Serializable
 internal data class NativeAuthenticatorSelection(
     val userVerification: String? = null,
+    val residentKey: String? = null,
+    val requireResidentKey: Boolean? = null,
+    val authenticatorAttachment: String? = null,
 )
 
 @Serializable
@@ -35,6 +56,7 @@ internal data class NativeAuthenticationOptions(
     val challenge: String,
     val rpId: String,
     val allowCredentials: List<NativeCredentialDescriptor> = emptyList(),
+    val timeout: Long? = null,
     val userVerification: String? = null,
     val extensions: NativeAuthenticationExtensions? = null,
 )
@@ -43,6 +65,7 @@ internal data class NativeAuthenticationOptions(
 internal data class NativeCredentialDescriptor(
     val id: String,
     val type: String,
+    val transports: List<String> = emptyList(),
 )
 
 @Serializable

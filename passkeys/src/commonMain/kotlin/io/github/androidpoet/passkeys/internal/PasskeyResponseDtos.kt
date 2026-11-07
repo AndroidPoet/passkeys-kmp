@@ -30,10 +30,12 @@ internal data class PasskeyAuthenticationDto(
     val response: PasskeyAuthenticationResponseDto,
 )
 
+// authenticatorData and signature are what a server verifies; an assertion
+// without them is unusable and must not surface as a Success.
 @Serializable
 internal data class PasskeyAuthenticationResponseDto(
     val clientDataJSON: String,
-    val authenticatorData: String? = null,
-    val signature: String? = null,
+    val authenticatorData: String,
+    val signature: String,
     val userHandle: String? = null,
 )

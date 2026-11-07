@@ -2,12 +2,18 @@ package io.github.androidpoet.passkeys
 
 import io.github.androidpoet.passkeys.internal.ApplePasskeyNativeBridge
 import io.github.androidpoet.passkeys.internal.PasskeyPayloadMapper
+import io.github.androidpoet.passkeys.internal.passkeyResult
 import io.github.androidpoet.passkeys.models.PasskeyAuthenticationOptions
 import io.github.androidpoet.passkeys.models.PasskeyAuthenticationResponse
 import io.github.androidpoet.passkeys.models.PasskeyCreationOptions
 import io.github.androidpoet.passkeys.models.PasskeyCreationResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
+private const val COSE_ES256 = -7L
 
 /**
  * [PasskeyClient] for JVM desktop (Compose Desktop).
@@ -33,14 +39,20 @@ public class JvmPasskeyClient(
 ) : PasskeyClient {
     override suspend fun create(options: PasskeyCreationOptions): PasskeyResult<PasskeyCreationResponse> {
         if (!nativeSupported) return unsupported()
-        return withContext(Dispatchers.IO) {
-            runCatching {
-                val raw =
-                    ApplePasskeyNativeBridge.nCreate(options.requestJson, windowHandle())
-                        ?: error("native passkey backend returned no result")
-                nativeError(raw)?.let { return@runCatching PasskeyResult.Failure(it) }
-                PasskeyResult.Success(PasskeyPayloadMapper.creationResponse(raw))
-            }.getOrElse { PasskeyResult.Failure(PasskeyPayloadMapper.exception(it)) }
+        return passkeyResult {
+            // Same normalization as every other platform: unwrap `{"publicKey":…}`
+            // and canonicalize base64url before the Swift side parses it.
+            val nativeOptions = PasskeyPayloadMapper.nativeCreationOptions(options.requestJson)
+            requireSupported(nativeOptions.authenticatorSelection?.authenticatorAttachment != "cross-platform") {
+                "only platform passkeys are supported on macOS; cross-platform (security key) requests are not"
+            }
+            requireSupported(nativeOptions.algorithms.isEmpty() || COSE_ES256 in nativeOptions.algorithms) {
+                "macOS passkeys are ES256 only, but pubKeyCredParams does not allow alg -7"
+            }
+            val requestJson = PasskeyPayloadMapper.creationRequestJson(options.requestJson)
+            val raw = withContext(Dispatchers.IO) { ApplePasskeyNativeBridge.create(requestJson, windowHandle()) }
+            nativeError(raw)?.let { throw it }
+            PasskeyPayloadMapper.creationResponse(raw)
         }
     }
 
@@ -48,32 +60,40 @@ public class JvmPasskeyClient(
         options: PasskeyAuthenticationOptions,
     ): PasskeyResult<PasskeyAuthenticationResponse> {
         if (!nativeSupported) return unsupported()
-        return withContext(Dispatchers.IO) {
-            runCatching {
-                val raw =
-                    ApplePasskeyNativeBridge.nAuthenticate(options.requestJson, windowHandle())
-                        ?: error("native passkey backend returned no result")
-                nativeError(raw)?.let { return@runCatching PasskeyResult.Failure(it) }
-                PasskeyResult.Success(PasskeyPayloadMapper.authenticationResponse(raw))
-            }.getOrElse { PasskeyResult.Failure(PasskeyPayloadMapper.exception(it)) }
+        return passkeyResult {
+            val requestJson = PasskeyPayloadMapper.authenticationRequestJson(options.requestJson)
+            val raw = withContext(Dispatchers.IO) { ApplePasskeyNativeBridge.authenticate(requestJson, windowHandle()) }
+            nativeError(raw)?.let { throw it }
+            PasskeyPayloadMapper.authenticationResponse(raw)
         }
     }
 
     private val nativeSupported: Boolean
         get() = ApplePasskeyNativeBridge.available
 
-    /** Detects the native backend's `{"__error__":{...}}` sentinel and maps it. */
+    /**
+     * Detects the native backend's `{"__error__":{"code","message"}}` sentinel
+     * and maps it. Codes are either the bridge's own (`parse`, `credential`,
+     * `serialize`, `unknown`) or `<NSError domain>:<code>`.
+     */
     private fun nativeError(raw: String): PasskeyException? {
-        if (!raw.contains("\"__error__\"")) return null
-        val message = ERROR_MESSAGE.find(raw)?.groupValues?.get(1) ?: "passkey ceremony failed"
-        val code =
-            ERROR_CODE
-                .find(raw)
-                ?.groupValues
-                ?.get(1)
-                .orEmpty()
-        val detail = if (code.isBlank()) message else "$message ($code)"
-        return PasskeyException.Unexpected(IllegalStateException(detail))
+        val error =
+            runCatching { json.parseToJsonElement(raw).jsonObject["__error__"]?.jsonObject }.getOrNull()
+                ?: return null
+        val code = error["code"]?.jsonPrimitive?.content.orEmpty()
+        val message = error["message"]?.jsonPrimitive?.content ?: "passkey ceremony failed"
+        val cause = IllegalStateException(if (code.isBlank()) message else "$message ($code)")
+        return when {
+            code == "parse" -> PasskeyException.InvalidPayload(cause)
+            code.startsWith(AUTHORIZATION_ERROR_DOMAIN) ->
+                when (code.substringAfter(':').toIntOrNull()) {
+                    AS_ERROR_CANCELED -> PasskeyException.UserCanceled(cause)
+                    AS_ERROR_INVALID_RESPONSE -> PasskeyException.DomError(DOM_MESSAGE, cause)
+                    AS_ERROR_MATCHED_EXCLUDED_CREDENTIAL -> PasskeyException.CredentialExcluded(cause)
+                    else -> PasskeyException.Unexpected(cause)
+                }
+            else -> PasskeyException.Unexpected(cause)
+        }
     }
 
     private fun <T> unsupported(): PasskeyResult<T> =
@@ -86,8 +106,17 @@ public class JvmPasskeyClient(
             ),
         )
 
+    private inline fun requireSupported(condition: Boolean, message: () -> String) {
+        if (!condition) throw PasskeyException.Unsupported(IllegalStateException(message()))
+    }
+
     private companion object {
-        private val ERROR_MESSAGE = """"message"\s*:\s*"((?:[^"\\]|\\.)*)"""".toRegex()
-        private val ERROR_CODE = """"code"\s*:\s*"((?:[^"\\]|\\.)*)"""".toRegex()
+        private val json = Json { ignoreUnknownKeys = true }
+        private const val AUTHORIZATION_ERROR_DOMAIN = "com.apple.AuthenticationServices.AuthorizationError:"
+        private const val AS_ERROR_CANCELED = 1001
+        private const val AS_ERROR_INVALID_RESPONSE = 1002
+        private const val AS_ERROR_MATCHED_EXCLUDED_CREDENTIAL = 1006
+        private const val DOM_MESSAGE =
+            "DOM error from WebAuthn. Check your apple-app-site-association file and the app's associated-domains entitlement."
     }
 }

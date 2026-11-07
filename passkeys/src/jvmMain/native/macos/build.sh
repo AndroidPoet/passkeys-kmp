@@ -37,6 +37,7 @@ build_arch() {
         -framework AppKit -framework AuthenticationServices \
         -o "$OUT/$LIB_NAME" \
         "$SWIFT_SOURCE" "$BRIDGE_OBJ" \
+        -Xlinker -install_name -Xlinker "@rpath/$LIB_NAME" \
         -O -whole-module-optimization
 
     rm -f "$OUT"/PasskeysNative.swift* "$OUT"/PasskeysNative.abi.json "$BRIDGE_OBJ"

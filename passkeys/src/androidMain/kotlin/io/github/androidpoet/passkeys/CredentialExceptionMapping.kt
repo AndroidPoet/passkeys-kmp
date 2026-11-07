@@ -16,6 +16,7 @@ import androidx.credentials.exceptions.GetCredentialProviderConfigurationExcepti
 import androidx.credentials.exceptions.GetCredentialUnknownException
 import androidx.credentials.exceptions.GetCredentialUnsupportedException
 import androidx.credentials.exceptions.NoCredentialException
+import androidx.credentials.exceptions.domerrors.InvalidStateError
 import androidx.credentials.exceptions.publickeycredential.CreatePublicKeyCredentialDomException
 import androidx.credentials.exceptions.publickeycredential.CreatePublicKeyCredentialException
 import androidx.credentials.exceptions.publickeycredential.GetPublicKeyCredentialDomException
@@ -29,7 +30,9 @@ internal fun CreateCredentialException.toCreatePasskeyException(): PasskeyExcept
         is CreateCredentialCancellationException -> PasskeyException.UserCanceled(this)
         is CreateCredentialInterruptedException -> PasskeyException.Interrupted(this)
         is CreateCredentialUnsupportedException -> PasskeyException.Unsupported(this)
-        is CreatePublicKeyCredentialDomException -> PasskeyException.DomError(DOM_MESSAGE, this)
+        // WebAuthn maps "an excluded credential already exists" to InvalidStateError.
+        is CreatePublicKeyCredentialDomException ->
+            if (domError is InvalidStateError) PasskeyException.CredentialExcluded(this) else PasskeyException.DomError(DOM_MESSAGE, this)
         is CreateCredentialNoCreateOptionException,
         is CreatePublicKeyCredentialException,
         -> PasskeyException.DomError(DOM_MESSAGE, this)

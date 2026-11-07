@@ -51,4 +51,13 @@ public sealed class PasskeyException(
     public class Unexpected(
         cause: Throwable? = null,
     ) : PasskeyException(1007, "An unexpected passkey error occurred", cause)
+
+    /**
+     * Registration was refused because the authenticator already holds one of
+     * the credentials listed in `excludeCredentials` (code `1008`). The account
+     * already has a passkey on this device; offer sign-in instead.
+     */
+    public class CredentialExcluded(
+        cause: Throwable? = null,
+    ) : PasskeyException(1008, "A passkey for this account already exists on this authenticator", cause)
 }

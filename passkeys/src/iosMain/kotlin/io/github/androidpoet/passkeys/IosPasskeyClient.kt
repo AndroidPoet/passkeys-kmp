@@ -9,10 +9,15 @@ import platform.UIKit.UIWindow
  * [ApplePasskeyClient]; this type only pins the presentation anchor to the
  * host [UIWindow] (on iOS `ASPresentationAnchor` is a `UIWindow`).
  *
- * @param window the window AuthenticationServices parents its system UI to.
+ * @param windowProvider resolves, at ceremony time, the window
+ *   AuthenticationServices parents its system UI to — so a multi-window or
+ *   scene-based app always presents on the current one.
  *   Requires iOS 16+ and an Associated Domains entitlement
  *   (`webcredentials:your-domain.com`).
  */
 public class IosPasskeyClient(
-    window: UIWindow,
-) : PasskeyClient by ApplePasskeyClient({ window })
+    windowProvider: () -> UIWindow,
+) : PasskeyClient by ApplePasskeyClient(windowProvider) {
+    /** Anchors every ceremony to one fixed [window]. */
+    public constructor(window: UIWindow) : this({ window })
+}

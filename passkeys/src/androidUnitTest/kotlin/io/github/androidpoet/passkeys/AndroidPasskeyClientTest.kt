@@ -3,12 +3,14 @@ package io.github.androidpoet.passkeys
 import io.github.androidpoet.passkeys.models.PasskeyAuthenticationResponse
 import io.github.androidpoet.passkeys.models.PasskeyCreationOptions
 import io.github.androidpoet.passkeys.models.PasskeyCreationResponse
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 class AndroidPasskeyClientTest {
@@ -137,6 +139,33 @@ class AndroidPasskeyClientTest {
 
             val failure = assertIs<PasskeyResult.Failure>(result)
             assertIs<PasskeyException.InvalidPayload>(failure.error)
+        }
+
+    @Test
+    fun test_create_whenProviderReturnsMalformedJson_returnsInvalidPayloadFailure() =
+        runTest {
+            val client = AndroidPasskeyClient(FakeAndroidCredentialProvider(createResponse = "not json"))
+
+            val result =
+                client.create(
+                    """{"challenge":"aGVsbG8","rp":{"id":"example.com"},"user":{"id":"dXNlci0x","name":"u"}}""",
+                )
+
+            val failure = assertIs<PasskeyResult.Failure>(result)
+            assertIs<PasskeyException.InvalidPayload>(failure.error)
+        }
+
+    @Test
+    fun test_authenticate_whenCoroutineCancelled_rethrowsInsteadOfFailing() =
+        runTest {
+            val client =
+                AndroidPasskeyClient(
+                    FakeAndroidCredentialProvider(authenticateError = CancellationException("scope left")),
+                )
+
+            assertFailsWith<CancellationException> {
+                client.authenticate("""{"challenge":"aGVsbG8","rpId":"example.com"}""")
+            }
         }
 
     @Test

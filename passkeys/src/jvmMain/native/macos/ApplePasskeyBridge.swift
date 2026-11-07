@@ -167,6 +167,13 @@ public func passkeyCreate(_ requestJson: UnsafePointer<CChar>, _ windowHandle: I
     }
     let attestation = root["attestation"] as? String
     let userVerification = (root["authenticatorSelection"] as? [String: Any])?["userVerification"] as? String
+    let excludeCredentials = ((root["excludeCredentials"] as? [[String: Any]]) ?? []).compactMap { entry -> Data? in
+        guard let idStr = entry["id"] as? String else { return nil }
+        return base64UrlDecode(idStr)
+    }
+    if !excludeCredentials.isEmpty, #unavailable(macOS 13.5) {
+        return cString(errorJson(code: "unsupported", message: "excludeCredentials requires macOS 13.5 or newer"))
+    }
 
     let result = runController({
         let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: rpId)
@@ -177,6 +184,9 @@ public func passkeyCreate(_ requestJson: UnsafePointer<CChar>, _ windowHandle: I
         )
         if let attestation { request.attestationPreference = ASAuthorizationPublicKeyCredentialAttestationKind(rawValue: attestation) }
         if let userVerification { request.userVerificationPreference = ASAuthorizationPublicKeyCredentialUserVerificationPreference(rawValue: userVerification) }
+        if !excludeCredentials.isEmpty, #available(macOS 13.5, *) {
+            request.excludedCredentials = excludeCredentials.map { ASAuthorizationPlatformPublicKeyCredentialDescriptor(credentialID: $0) }
+        }
         return request
     }, windowHandle: windowHandle) { authorization in
         guard let credential = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialRegistration else {

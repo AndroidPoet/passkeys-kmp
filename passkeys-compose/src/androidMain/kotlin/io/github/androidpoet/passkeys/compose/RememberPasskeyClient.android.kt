@@ -12,7 +12,9 @@ import io.github.androidpoet.passkeys.PasskeyClient
 @Composable
 public actual fun rememberPasskeyClient(): PasskeyClient {
     val activity = LocalContext.current.findActivity()
-    return remember { AndroidPasskeyClient(activity) }
+    // Keyed by the Activity so a composition that outlives its host (or moves
+    // hosts) never keeps presenting on a finished one.
+    return remember(activity) { AndroidPasskeyClient(activity) }
 }
 
 private fun Context.findActivity(): Activity {

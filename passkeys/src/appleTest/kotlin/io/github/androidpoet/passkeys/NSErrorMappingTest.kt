@@ -23,8 +23,14 @@ class NSErrorMappingTest {
     }
 
     @Test
-    fun test_unsupportedCodeMapsToUnsupported() {
-        assertIs<PasskeyException.Unsupported>(errorWithCode(1006).toPasskeyException())
+    fun test_matchedExcludedCredentialCodeMapsToCredentialExcluded() {
+        assertIs<PasskeyException.CredentialExcluded>(errorWithCode(1006).toPasskeyException())
+    }
+
+    @Test
+    fun test_sameCodeInAnotherDomainIsNotInterpreted() {
+        val foreign = NSError.errorWithDomain(domain = "NSURLErrorDomain", code = 1001, userInfo = null)
+        assertIs<PasskeyException.Unexpected>(foreign.toPasskeyException())
     }
 
     @Test

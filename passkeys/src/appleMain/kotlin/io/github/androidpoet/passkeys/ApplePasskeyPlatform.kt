@@ -18,6 +18,9 @@ internal expect object ApplePasskeyPlatform {
 
     /** Whether the `prf` extension is available (iOS 18+ / macOS 15+). */
     fun supportsPrf(): Boolean
+
+    /** Whether `excludeCredentials` can be forwarded (iOS 17.4+ / macOS 13.5+). */
+    fun supportsExcludedCredentials(): Boolean
 }
 
 /**

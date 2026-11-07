@@ -31,14 +31,25 @@ class JvmPasskeyClientTest {
      * authenticator. The exact type depends on the host: with no in-process
      * backend (Windows/Linux, or macOS when the bundled dylib can't load) the
      * client short-circuits to [PasskeyException.Unsupported]; on macOS with the
-     * backend present it reaches the native side, which rejects this minimal
-     * request with a loud [PasskeyException.Unexpected] (a parse failure).
+     * backend present the common mapper rejects this minimal request as
+     * [PasskeyException.InvalidPayload] before any native UI could appear.
      */
     private fun assertExpectedFailure(error: PasskeyException) {
         if (ApplePasskeyNativeBridge.available) {
-            assertIs<PasskeyException.Unexpected>(error)
+            assertIs<PasskeyException.InvalidPayload>(error)
         } else {
             assertIs<PasskeyException.Unsupported>(error)
         }
     }
+
+    @Test
+    fun test_create_crossPlatformAttachment_isRefusedBeforeNative() =
+        runTest {
+            val request =
+                """{"challenge":"aGVsbG8","rp":{"id":"example.com"},"user":{"id":"dXNlci0x","name":"u"},
+                   "authenticatorSelection":{"authenticatorAttachment":"cross-platform"}}"""
+            val result = client.create(PasskeyCreationOptions(request))
+            val failure = assertIs<PasskeyResult.Failure>(result)
+            assertIs<PasskeyException.Unsupported>(failure.error)
+        }
 }

@@ -35,10 +35,10 @@ fun main() {
     authenticationField.value = authenticationOptions(rpId)
 
     button("createButton").addEventListener("click") {
-        run("✅ Passkey created successfully", output) { passkeys.create(registrationField.value) }
+        run("✅ Registration response created — verify it on your server", output) { passkeys.create(registrationField.value) }
     }
     button("authenticateButton").addEventListener("click") {
-        run("✅ Login successful", output) { passkeys.authenticate(authenticationField.value) }
+        run("✅ Assertion created — not signed in until your server verifies it", output) { passkeys.authenticate(authenticationField.value) }
     }
 }
 

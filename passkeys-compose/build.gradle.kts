@@ -31,6 +31,14 @@ kotlin {
             // LocalContext, to resolve the hosting Activity.
             implementation(compose.ui)
         }
+        iosMain.dependencies {
+            // LocalUIViewController, to resolve the presenting window at ceremony time.
+            implementation(compose.ui)
+        }
+        jvmMain.dependencies {
+            // ComposeWindow, to anchor the native sheet to the hosting Compose window.
+            implementation(compose.ui)
+        }
     }
 }
 
