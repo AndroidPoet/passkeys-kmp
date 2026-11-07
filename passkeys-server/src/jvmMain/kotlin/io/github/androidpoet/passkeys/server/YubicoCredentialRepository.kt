@@ -2,6 +2,7 @@ package io.github.androidpoet.passkeys.server
 
 import com.yubico.webauthn.CredentialRepository
 import com.yubico.webauthn.RegisteredCredential
+import com.yubico.webauthn.data.AuthenticatorTransport
 import com.yubico.webauthn.data.ByteArray
 import com.yubico.webauthn.data.PublicKeyCredentialDescriptor
 import java.util.Optional
@@ -18,8 +19,13 @@ internal class YubicoCredentialRepository(
     override fun getCredentialIdsForUsername(username: String): Set<PublicKeyCredentialDescriptor> =
         store
             .findByUsername(username)
-            .map { PublicKeyCredentialDescriptor.builder().id(ByteArray.fromBase64Url(it.credentialId)).build() }
-            .toSet()
+            .map { stored ->
+                PublicKeyCredentialDescriptor
+                    .builder()
+                    .id(ByteArray.fromBase64Url(stored.credentialId))
+                    .transports(stored.transports.map(AuthenticatorTransport::of).toSortedSet())
+                    .build()
+            }.toSet()
 
     override fun getUserHandleForUsername(username: String): Optional<ByteArray> =
         Optional.ofNullable(store.userHandleForUsername(username)).map(ByteArray::fromBase64Url)
@@ -45,5 +51,9 @@ internal class YubicoCredentialRepository(
             .userHandle(ByteArray.fromBase64Url(userHandle))
             .publicKeyCose(ByteArray.fromBase64Url(publicKeyCose))
             .signatureCount(signatureCount)
+            // Restoring BE/BS lets the verifier reject an assertion whose
+            // backup-eligibility flag changed since registration.
+            .backupEligible(backupEligible)
+            .backupState(backedUp)
             .build()
 }

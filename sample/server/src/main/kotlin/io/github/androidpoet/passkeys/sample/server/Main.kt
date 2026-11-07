@@ -4,6 +4,7 @@ import io.github.androidpoet.passkeys.server.InMemoryPasskeyChallengeStore
 import io.github.androidpoet.passkeys.server.InMemoryPasskeyCredentialStore
 import io.github.androidpoet.passkeys.server.PasskeyRelyingParty
 import io.github.androidpoet.passkeys.server.PasskeyServerConfig
+import io.github.androidpoet.passkeys.server.newAccountsOnlyEnrollment
 import io.github.androidpoet.passkeys.server.passkeyRoutes
 import io.ktor.server.application.Application
 import io.ktor.server.engine.embeddedServer
@@ -26,6 +27,7 @@ fun main() {
 private const val DEFAULT_PORT = 8080
 
 private fun Application.passkeyDemo() {
+    val credentials = InMemoryPasskeyCredentialStore()
     val relyingParty =
         PasskeyRelyingParty(
             config =
@@ -34,12 +36,15 @@ private fun Application.passkeyDemo() {
                     rpName = "passkeys-kmp sample",
                     origins = setOf("http://localhost:$DEFAULT_PORT"),
                 ),
-            credentials = InMemoryPasskeyCredentialStore(),
+            credentials = credentials,
             challenges = InMemoryPasskeyChallengeStore(),
         )
 
     routing {
-        passkeyRoutes(relyingParty)
+        // The server picks the account (and mints its handle); the browser only
+        // proposes a name. Existing names are refused — adding a second passkey
+        // belongs behind your own signed-in flow.
+        passkeyRoutes(relyingParty, enrollment = newAccountsOnlyEnrollment(credentials))
         staticResources("/", "static")
     }
 }

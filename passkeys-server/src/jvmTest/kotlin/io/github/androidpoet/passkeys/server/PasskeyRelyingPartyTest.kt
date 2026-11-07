@@ -77,4 +77,24 @@ class PasskeyRelyingPartyTest {
             PasskeyUser(handle = "", name = "alice", displayName = "Alice")
         }
     }
+
+    @Test
+    fun user_requiresCanonicalBase64UrlHandleOfAtMost64Bytes() {
+        // Padded, standard-alphabet, non-base64 and oversized handles are all refused.
+        assertFailsWith<IllegalArgumentException> { PasskeyUser(handle = "dXNlci0xMjM=", name = "alice", displayName = "A") }
+        assertFailsWith<IllegalArgumentException> { PasskeyUser(handle = "a+b/c", name = "alice", displayName = "A") }
+        assertFailsWith<IllegalArgumentException> { PasskeyUser(handle = "not base64!", name = "alice", displayName = "A") }
+        val tooLong =
+            java.util.Base64
+                .getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(ByteArray(65))
+        assertFailsWith<IllegalArgumentException> { PasskeyUser(handle = tooLong, name = "alice", displayName = "A") }
+        val maxLength =
+            java.util.Base64
+                .getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(ByteArray(64))
+        PasskeyUser(handle = maxLength, name = "alice", displayName = "A")
+    }
 }

@@ -33,23 +33,12 @@
       return json;
     };
 
-    // A stable, opaque, base64url user handle per username (server would assign this).
-    const handleFor = (username) => {
-      const key = 'pk-handle:' + username;
-      let h = localStorage.getItem(key);
-      if (!h) {
-        const bytes = crypto.getRandomValues(new Uint8Array(16));
-        h = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        localStorage.setItem(key, h);
-      }
-      return h;
-    };
-
+    // The server assigns the account's opaque user handle; the page only proposes a name.
     document.getElementById('register').onclick = async () => {
       try {
         const username = document.getElementById('username').value.trim();
         log('starting registration…');
-        const begin = await post('/passkeys/register/begin', { handle: handleFor(username), name: username, displayName: username });
+        const begin = await post('/passkeys/register/begin', { name: username, displayName: username });
         const options = PublicKeyCredential.parseCreationOptionsFromJSON(begin.publicKey);
         const credential = await navigator.credentials.create({ publicKey: options });
         const result = await post('/passkeys/register/finish', { ceremonyId: begin.ceremonyId, response: credential.toJSON() });

@@ -18,7 +18,8 @@ kotlin {
 
     sourceSets {
         jvmMain.dependencies {
-            api(libs.yubico.webauthn.server.core)
+            // Yubico types never appear in the public API; keep it off consumers' compile classpath.
+            implementation(libs.yubico.webauthn.server.core)
             api(libs.ktor.server.core)
             implementation(libs.kotlinx.serialization.json)
         }
