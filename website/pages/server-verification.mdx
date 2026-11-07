@@ -41,3 +41,16 @@ A correct verification confirms, at minimum:
 - The **sign-count** advanced (clone detection), where the authenticator reports one.
 
 Only after these pass should you treat the user as registered or authenticated.
+
+Two checks no library can do for you: **which account** a registration is allowed to enroll a
+passkey for (bind it to your signed-in session or sign-up flow — a successful ceremony proves
+possession of an authenticator, not ownership of an account), and the **origin list**, which
+must include every exact origin your clients report (ports included, and
+`android:apk-key-hash:<sha256>` for native Android apps).
+
+## Using `passkeys-server`
+
+On a Kotlin/JVM backend, `io.github.androidpoet:passkeys-server` wraps java-webauthn-server
+behind `PasskeyRelyingParty` + `passkeyRoutes(relyingParty, enrollment)`, with expiring
+single-use ceremonies, exact-origin matching, a server-enforced user-verification policy and
+compare-and-set counter updates. See the README's *Server (Relying Party)* section.

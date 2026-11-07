@@ -30,9 +30,9 @@ authenticators on Android, iOS, macOS, Windows, Linux, browser (Wasm), and JVM/C
 ## Install
 
 ```kotlin
-implementation("io.github.androidpoet:passkeys:0.2.0")          // core SDK
-implementation("io.github.androidpoet:passkeys-compose:0.2.0")  // rememberPasskeyClient() (Compose MP)
-implementation("io.github.androidpoet:passkeys-server:0.2.0")   // Ktor Relying Party (JVM server)
+implementation("io.github.androidpoet:passkeys:0.3.0")          // core SDK
+implementation("io.github.androidpoet:passkeys-compose:0.3.0")  // rememberPasskeyClient() (Compose MP)
+implementation("io.github.androidpoet:passkeys-server:0.3.0")   // Ktor Relying Party (JVM server)
 ```
 
 ## Usage
@@ -125,9 +125,11 @@ PasskeyBrowserHandoff.open("https://your-rp.example/passkey/sign-in")
 <details>
 <summary><b>Apple extensions (iOS & macOS)</b></summary>
 
-- `largeBlob`: iOS 17+ / macOS 14+ — `prf`: iOS 18+ / macOS 15+
+- `largeBlob`: iOS 17+ / macOS 14+ — `prf`: iOS 18+ / macOS 15+ — `excludeCredentials`: iOS 17.4+ / macOS 13.5+
 - Unsupported OS versions fail with `PasskeyException.Unsupported` before any UI
-- Extension outputs are preserved in `rawJson.clientExtensionResults`
+- Extension outputs are preserved in `rawJson.clientExtensionResults`. **`prf.results` is
+  client-side key material** — keep it on the device and strip it from anything you log or
+  send to a server that does not need it.
 </details>
 
 <details>
@@ -149,22 +151,37 @@ implementation("io.github.androidpoet:passkeys-server:<version>")
 ```
 
 ```kotlin
+val credentials = InMemoryPasskeyCredentialStore()      // bring your own database
 val relyingParty = PasskeyRelyingParty(
-    config = PasskeyServerConfig("example.com", "Example", setOf("https://example.com")),
-    credentials = InMemoryPasskeyCredentialStore(), // bring your own database
-    challenges = InMemoryPasskeyChallengeStore(),   // bring your own short-TTL store
+    config = PasskeyServerConfig(
+        rpId = "example.com",
+        rpName = "Example",
+        origins = setOf("https://example.com"),            // exact origins, port included
+        userVerification = PasskeyUserVerification.PREFERRED, // REQUIRED is enforced server-side
+    ),
+    credentials = credentials,
+    challenges = InMemoryPasskeyChallengeStore(),          // bring your own short-TTL store
 )
 
 routing {
-    passkeyRoutes(relyingParty) // POST /passkeys/{register,login}/{begin,finish}
+    // The server decides which account a registration belongs to — never the
+    // request body. Resolve it from your session, or use the sign-up policy below.
+    passkeyRoutes(relyingParty, enrollment = newAccountsOnlyEnrollment(credentials))
 }
 ```
 
 Each ceremony is two calls — a `begin` that returns the options the client passes to
-`create` / `authenticate`, and a `finish` that verifies the client's `rawJson`. Storage is
+`create` / `authenticate`, and a `finish` that verifies the client's `rawJson`. Pending
+ceremonies expire (`challengeTimeout`, 5 min by default) and are single-use. Storage is
 bring-your-own via `PasskeyCredentialStore` / `PasskeyChallengeStore`; the in-memory
-implementations are for demos and tests. A runnable demo with a browser test page lives in
+implementations are for demos and tests. Verified outcomes report whether user verification
+happened and the credential's backup state. A runnable demo with a browser test page lives in
 [`:sample:server`](sample/server/README.md) — `./gradlew :sample:server:run`.
+
+Things the library leaves to you, on purpose: the signed-in session (bind the ceremony id to
+it), CSRF protection and rate limiting on the routes, and — when verifying Android
+registrations — listing the app's `android:apk-key-hash:<sha256>` origin alongside your web
+origin.
 
 ## Sample
 

@@ -41,8 +41,8 @@ jobs:
       - name: Binary compatibility (apiCheck)
         run: ./gradlew apiCheck
 
-      - name: JVM + Android tests
-        run: ./gradlew jvmTest testDebugUnitTest
+      - name: JVM + Android + Apple tests
+        run: ./gradlew jvmTest testDebugUnitTest macosArm64Test
 
       - name: Coverage gate (koverVerify)
         run: ./gradlew koverVerify

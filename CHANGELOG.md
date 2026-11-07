@@ -4,6 +4,78 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.0 - 2026-11-07
+
+Security and correctness release following an external audit of 0.2.0. Several
+server APIs changed shape; the client surface gained one failure case and lost
+two nullable fields.
+
+### Changed — `passkeys-server` (breaking)
+
+- `passkeyRoutes()` now requires a `PasskeyEnrollmentPolicy`. The account a
+  `register/begin` enrolls for is resolved **server-side** (from your session or
+  sign-up flow) and never from the request body, which previously let any caller
+  enroll a passkey on any `handle`/`name`. `newAccountsOnlyEnrollment()` covers
+  passkey-first sign-up demos; a refused enrollment answers `403`.
+- Origins match exactly, port included. The former implicit `allowOriginPort`
+  relaxation is now an explicit, off-by-default `PasskeyServerConfig` option.
+- Pending ceremonies carry their kind and an expiry (`challengeTimeout`, default
+  5 min). `finish` rejects expired, wrong-kind and replayed ceremonies;
+  `InMemoryPasskeyChallengeStore` expires entries and caps its size.
+- `PasskeyCredentialStore.save` is insert-only (throws on a duplicate id) and
+  `updateSignatureCount` is replaced by `recordAssertion(...)`, a compare-and-set
+  on the counter so two concurrent assertions can no longer regress it.
+- `PasskeyServerConfig.userVerification` (`REQUIRED` is enforced by the verifier;
+  per-ceremony override on `beginAuthentication`). `PasskeyAuthenticationOutcome`
+  reports `userVerified`, `backupEligible`, `backedUp`; `StoredPasskey` persists
+  BE/BS flags and transports so the verifier's backup-eligibility check works.
+- `PasskeyUser.handle` must be canonical unpadded base64url of 1–64 bytes.
+  Routes reject non-string optional fields and bodies over 64 KiB (`413`).
+- Yubico's library is an `implementation` dependency; it never appeared in the
+  public API.
+
+### Changed — `passkeys` (breaking)
+
+- `PasskeyAuthenticationResponse.authenticatorData` and `signature` are
+  non-null: an assertion without them is unusable and now fails as
+  `InvalidPayload` instead of surfacing as a `Success`.
+- New `PasskeyException.CredentialExcluded` (code `1008`) for "an
+  `excludeCredentials` entry matched" — previously reported as `Unsupported`
+  on Apple (error 1006 is `matchedExcludedCredential`) and as a generic DOM
+  error elsewhere.
+
+### Fixed
+
+- Coroutine cancellation is propagated on every platform instead of being
+  swallowed into a `Failure`; cancelling the caller now dismisses the system
+  sheet on Apple platforms, aborts the browser ceremony (`AbortController`) and
+  cancels the Windows Hello dialog.
+- Apple: one controller/delegate/presentation provider per ceremony, strongly
+  held for its duration and completed at most once — concurrent ceremonies no
+  longer cross-wire callbacks. OS-version-gated getters (`attachment`,
+  `largeBlob`, `prf`) are only read where they exist, so plain ceremonies no
+  longer crash on iOS 16.0–16.5 / macOS 13.0–13.4. Empty binary inputs (e.g. an
+  empty largeBlob write) no longer fail. `excludeCredentials` (iOS 17.4+ /
+  macOS 13.5+), PRF `evalByCredential` and registration PRF results are
+  forwarded; `cross-platform` attachment and non-ES256-only `pubKeyCredParams`
+  are rejected up front.
+- Windows: version-gated output fields are read only when the returned struct
+  has them (previously read before the version check). `pubKeyCredParams`,
+  resident-key, attachment, `excludeCredentials` and `timeout` are honoured.
+- Linux: `pubKeyCredParams` (ES256/EdDSA/RS256), user verification, resident
+  key, `excludeCredentials` and `timeout` are honoured; `platform`-only requests
+  are refused; the CBOR unwrap validates the declared length.
+- Every native serializer emits `clientExtensionResults` (as `{}` when empty),
+  which the W3C JSON shape — and `passkeys-server` — requires.
+- JVM desktop: requests are normalized through the common mapper before JNI (a
+  `{"publicKey":…}` envelope from `passkeys-server` now works); native errors
+  are JSON-parsed and mapped by NSError code; strings cross JNI as UTF-8 byte
+  arrays (modified UTF-8 corrupted emoji in display names); the extracted
+  native library is cached by content hash and published atomically.
+- Compose: the Android client is keyed by its `Activity`; iOS resolves the
+  presenting window from the hosting view controller at ceremony time; JVM
+  anchors to the hosting Compose window.
+
 ## 0.2.0 - 2026-06-19
 
 Adds the server half of passkeys as a new published module.

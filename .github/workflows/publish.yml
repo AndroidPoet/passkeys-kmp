@@ -11,9 +11,22 @@ permissions:
 
 jobs:
   publish:
+    # `release: published` also fires for prereleases; only full releases publish.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
+      # The tag must name the version the build will publish.
+      - name: Check release tag matches Configuration.VERSION
+        if: github.event_name == 'release'
+        run: |
+          declared=$(sed -n 's/.*const val VERSION = "\(.*\)".*/\1/p' buildSrc/src/main/kotlin/io/github/androidpoet/passkeys/Configuration.kt)
+          tag="${{ github.event.release.tag_name }}"
+          if [ "v$declared" != "$tag" ] && [ "$declared" != "$tag" ]; then
+            echo "Release tag $tag does not match Configuration.VERSION=$declared" >&2
+            exit 1
+          fi
 
       # Both the verify gate (apiCheck) and the publish build the linuxX64 klib,
       # whose libfido2 cinterop needs fido.h. Homebrew installs it under
@@ -28,8 +41,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # Same gates as the Build workflow: a release must not publish what main would reject.
       - name: Verify build before publishing
-        run: ./gradlew apiCheck detekt jvmTest
+        run: ./gradlew spotlessCheck detekt apiCheck jvmTest testDebugUnitTest macosArm64Test koverVerify
 
       # --no-configuration-cache: the vanniktech publish tasks are not yet
       # configuration-cache compatible; remove once they are.
