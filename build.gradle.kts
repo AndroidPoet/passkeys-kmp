@@ -15,7 +15,7 @@ plugins {
 }
 
 // Published modules whose public API and coverage we track.
-val publishedModules = listOf("passkeys", "passkeys-compose", "passkeys-server")
+val publishedModules = listOf("passkeys", "passkeys-compose", "passkeys-server", "passkeys-auth-session", "passkeys-webview")
 
 // Validate the binary (ABI) compatibility of every published module so an
 // accidental public-API break is caught in review instead of by consumers.

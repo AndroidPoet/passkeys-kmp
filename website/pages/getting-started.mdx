@@ -12,8 +12,10 @@ import { Steps, Callout } from 'nextra/components'
 Add the core SDK, plus the Compose helper if you use Compose Multiplatform:
 
 ```kotlin
-implementation("io.github.androidpoet:passkeys:0.3.0")          // core SDK
-implementation("io.github.androidpoet:passkeys-compose:0.3.0")  // rememberPasskeyClient() (Compose MP)
+implementation("io.github.androidpoet:passkeys:0.4.0")               // core SDK
+implementation("io.github.androidpoet:passkeys-compose:0.4.0")       // rememberPasskeyClient() (Compose MP)
+implementation("io.github.androidpoet:passkeys-auth-session:0.4.0")  // web / OAuth sign-in (Android, iOS)
+implementation("io.github.androidpoet:passkeys-webview:0.4.0")       // passkeys inside a WebView (Android)
 ```
 
 The artifacts are published to **Maven Central** under the `io.github.androidpoet` group.

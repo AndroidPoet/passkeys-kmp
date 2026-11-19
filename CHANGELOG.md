@@ -4,6 +4,45 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0 - 2026-11-19
+
+Brings the Apple clients to parity with what Credential Manager offers on
+Android, and adds the two non-native ways to use passkeys as separate modules.
+
+### Added
+
+- `PasskeyAuthenticationOptions.preferImmediatelyAvailableCredentials`: show the
+  sign-in sheet only when a passkey is on the device right now. Honoured on
+  Android, iOS and macOS.
+- Keyboard-autofill sign-in: `AndroidPasskeyClient.authenticateWithAutofill(view, options)`
+  (Android 15+) and `IosPasskeyClient.authenticateWithAutofill(options)`.
+- `PasskeySignals` (WebAuthn Signal API) with `AndroidPasskeySignals`. Apple's
+  equivalent is Swift-only; the usage guide shows how to implement the interface
+  in an iOS app.
+
+- `passkeys-auth-session`: `WebAuthSession` runs a web sign-in page or an
+  OAuth / OIDC flow in the system authentication browser and returns the
+  redirect URL — an Auth Tab on Android (`AndroidWebAuthSession`),
+  `ASWebAuthenticationSession` on iOS (`IosWebAuthSession`). Supports custom
+  scheme and verified `https` redirects, and ephemeral sessions.
+- `passkeys-webview` (Android): `WebView.enablePasskeys()` lets a first-party
+  page in a `WebView` use passkeys through `navigator.credentials`.
+
+### Fixed
+
+- iOS and macOS now honour `PasskeyCreationOptions.preferImmediatelyAvailableCredentials`
+  and `isConditionalCreateRequest` (conditional create needs iOS 18 / macOS 15;
+  older versions fail with `Unsupported`). Both were previously ignored.
+- iOS / macOS 26: "device not set up for passkeys" (`ASAuthorizationError` 1010)
+  maps to `Unsupported` instead of `Unexpected`.
+
+### Changed
+
+- `PasskeyAuthenticationOptions` gained a constructor parameter: source
+  compatible, but code compiled against 0.3.0 must be recompiled.
+- Android Gradle Plugin 8.7.3 → 8.9.1, required by `androidx.browser` 1.9.
+  `passkeys-auth-session` needs compileSdk 36 in the consuming app.
+
 ## 0.3.0 - 2026-11-07
 
 Security and correctness release following an external audit of 0.2.0. Several

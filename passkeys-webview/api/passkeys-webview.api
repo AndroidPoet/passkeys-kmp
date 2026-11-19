@@ -1,0 +1,4 @@
+public final class io/github/androidpoet/passkeys/webview/WebViewPasskeysKt {
+	public static final fun enablePasskeys (Landroid/webkit/WebView;)Z
+}
+

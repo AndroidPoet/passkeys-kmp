@@ -1,0 +1,49 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, iosX64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <passkeys-kmp:passkeys-auth-session>
+abstract interface io.github.androidpoet.passkeys.authsession/WebAuthSession { // io.github.androidpoet.passkeys.authsession/WebAuthSession|null[0]
+    abstract suspend fun authenticate(kotlin/String, io.github.androidpoet.passkeys.authsession/WebAuthRedirect, kotlin/Boolean = ...): io.github.androidpoet.passkeys/PasskeyResult<kotlin/String> // io.github.androidpoet.passkeys.authsession/WebAuthSession.authenticate|authenticate(kotlin.String;io.github.androidpoet.passkeys.authsession.WebAuthRedirect;kotlin.Boolean){}[0]
+}
+
+sealed interface io.github.androidpoet.passkeys.authsession/WebAuthRedirect { // io.github.androidpoet.passkeys.authsession/WebAuthRedirect|null[0]
+    final class CustomScheme : io.github.androidpoet.passkeys.authsession/WebAuthRedirect { // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.CustomScheme|null[0]
+        constructor <init>(kotlin/String) // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.CustomScheme.<init>|<init>(kotlin.String){}[0]
+
+        final val scheme // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.CustomScheme.scheme|{}scheme[0]
+            final fun <get-scheme>(): kotlin/String // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.CustomScheme.scheme.<get-scheme>|<get-scheme>(){}[0]
+
+        final fun component1(): kotlin/String // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.CustomScheme.component1|component1(){}[0]
+        final fun copy(kotlin/String = ...): io.github.androidpoet.passkeys.authsession/WebAuthRedirect.CustomScheme // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.CustomScheme.copy|copy(kotlin.String){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.CustomScheme.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.CustomScheme.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.CustomScheme.toString|toString(){}[0]
+    }
+
+    final class Https : io.github.androidpoet.passkeys.authsession/WebAuthRedirect { // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https|null[0]
+        constructor <init>(kotlin/String, kotlin/String) // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.<init>|<init>(kotlin.String;kotlin.String){}[0]
+
+        final val host // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.host|{}host[0]
+            final fun <get-host>(): kotlin/String // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.host.<get-host>|<get-host>(){}[0]
+        final val path // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.path|{}path[0]
+            final fun <get-path>(): kotlin/String // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.path.<get-path>|<get-path>(){}[0]
+
+        final fun component1(): kotlin/String // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.component1|component1(){}[0]
+        final fun component2(): kotlin/String // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.component2|component2(){}[0]
+        final fun copy(kotlin/String = ..., kotlin/String = ...): io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.copy|copy(kotlin.String;kotlin.String){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.androidpoet.passkeys.authsession/WebAuthRedirect.Https.toString|toString(){}[0]
+    }
+}
+
+final class io.github.androidpoet.passkeys.authsession/IosWebAuthSession : io.github.androidpoet.passkeys.authsession/WebAuthSession { // io.github.androidpoet.passkeys.authsession/IosWebAuthSession|null[0]
+    constructor <init>(kotlin/Function0<platform.UIKit/UIWindow>) // io.github.androidpoet.passkeys.authsession/IosWebAuthSession.<init>|<init>(kotlin.Function0<platform.UIKit.UIWindow>){}[0]
+    constructor <init>(platform.UIKit/UIWindow) // io.github.androidpoet.passkeys.authsession/IosWebAuthSession.<init>|<init>(platform.UIKit.UIWindow){}[0]
+
+    final suspend fun authenticate(kotlin/String, io.github.androidpoet.passkeys.authsession/WebAuthRedirect, kotlin/Boolean): io.github.androidpoet.passkeys/PasskeyResult<kotlin/String> // io.github.androidpoet.passkeys.authsession/IosWebAuthSession.authenticate|authenticate(kotlin.String;io.github.androidpoet.passkeys.authsession.WebAuthRedirect;kotlin.Boolean){}[0]
+}
