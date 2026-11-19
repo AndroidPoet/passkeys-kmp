@@ -3,18 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign in — passkeys-kmp sample</title>
+  <title>Sign in</title>
   <style>
-    body { font: 16px/1.5 system-ui, sans-serif; margin: 0; padding: 32px 24px; color: #1b1b1f; background: #fafafa; }
-    h1 { font-size: 24px; margin: 0 0 8px; }
-    p { color: #5a5a66; margin: 0 0 24px; }
-    a.button { display: block; text-align: center; padding: 14px; border-radius: 12px; background: #1b1b1f; color: #fff; text-decoration: none; font-weight: 600; }
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 40px 24px; color: #16181d; background: #ffffff; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; margin-bottom: 40px; }
+    .brand svg { width: 32px; height: 32px; }
+    h1 { font-size: 30px; line-height: 1.2; font-weight: 600; margin: 0 0 6px; }
+    .lead { color: #5b6170; margin: 0 0 28px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #3c4150; margin-bottom: 6px; }
+    input { width: 100%; font: inherit; padding: 13px 14px; border: 1.5px solid #c9cdd6; border-radius: 10px; margin-bottom: 20px; background: #fff; color: inherit; }
+    .primary { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px; border: 0; border-radius: 10px; background: #2f4bd8; color: #fff; font: inherit; font-weight: 600; text-decoration: none; }
+    .primary svg { width: 20px; height: 20px; }
+    .secondary { display: block; text-align: center; margin-top: 18px; color: #2f4bd8; font-weight: 600; text-decoration: none; }
+    footer { margin-top: 48px; font-size: 13px; color: #8a90a0; }
   </style>
 </head>
 <body>
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#2f4bd8"/><circle cx="11" cy="16" r="4.5" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M15.5 16H26m-3.5 0v4m-4-4v3" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+    Passkeys KMP sample
+  </div>
   <h1>Sign in</h1>
-  <p>Stand-in for your web sign-in page or identity provider. A real page runs its passkey
-     prompt here, then redirects back to the app with an authorization code.</p>
-  <a class="button" href="passkeys-sample://callback?code=demo-code">Continue to the app</a>
+  <p class="lead">Use the passkey saved on this device.</p>
+  <label for="email">Email</label>
+  <input id="email" type="email" value="alex@example.com" autocomplete="username webauthn">
+  <a class="primary" href="passkeys-sample://callback?code=demo-code">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 12h10m-3 0v3.5m-3.5-3.5v2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    Continue with a passkey
+  </a>
+  <a class="secondary" href="passkeys-sample://callback?code=demo-code">Use a password instead</a>
+  <footer>Demo page from :sample:server. A real page runs its passkey prompt here, then redirects back to the app.</footer>
 </body>
 </html>

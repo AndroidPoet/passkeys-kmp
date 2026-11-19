@@ -4,33 +4,44 @@ import android.annotation.SuppressLint
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import io.github.androidpoet.passkeys.PasskeyResult
 import io.github.androidpoet.passkeys.authsession.AndroidWebAuthSession
 import io.github.androidpoet.passkeys.authsession.WebAuthRedirect
 import io.github.androidpoet.passkeys.webview.enablePasskeys
 
-// 10.0.2.2 is the emulator's alias for the host machine running :sample:server.
-private const val SERVER = "http://10.0.2.2:8080"
+// Reach :sample:server on the host with `adb reverse tcp:8080 tcp:8080`. Localhost also
+// counts as a secure context, which WebAuthn requires.
+private const val SIGN_IN_URL = "http://localhost:8080/auth.html"
 
 @Composable
 actual fun rememberWebSignIn(): (suspend () -> PasskeyResult<String>)? {
     val activity = LocalContext.current as ComponentActivity
     val session = remember(activity) { AndroidWebAuthSession(activity) }
-    return { session.authenticate("$SERVER/auth.html", WebAuthRedirect.CustomScheme(AUTH_REDIRECT_SCHEME)) }
+    return { session.authenticate(SIGN_IN_URL, WebAuthRedirect.CustomScheme(AUTH_REDIRECT_SCHEME)) }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -38,23 +49,46 @@ actual fun rememberWebSignIn(): (suspend () -> PasskeyResult<String>)? {
 @Composable
 actual fun PlatformDemos() {
     var open by remember { mutableStateOf(false) }
-    var passkeysEnabled by remember { mutableStateOf<Boolean?>(null) }
 
-    Button(onClick = { open = !open }, modifier = Modifier.fillMaxWidth()) {
-        Text(if (open) "Close WebView" else "Open sign-in page in a WebView")
+    Button(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
+        Text("Open sign-in page in a WebView")
     }
-    if (open) {
-        Text("WebView.enablePasskeys() returned $passkeysEnabled", style = MaterialTheme.typography.bodyMedium)
-        AndroidView(
-            factory = { context ->
-                WebView(context).apply {
-                    settings.javaScriptEnabled = true
-                    webViewClient = WebViewClient()
-                    passkeysEnabled = enablePasskeys()
-                    loadUrl(SERVER)
+    if (!open) return
+
+    Dialog(onDismissRequest = { open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        var passkeysEnabled by remember { mutableStateOf<Boolean?>(null) }
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Your page in a WebView", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            when (passkeysEnabled) {
+                                true -> "Passkeys enabled for this page"
+                                false -> "This WebView is too old for passkeys"
+                                null -> "Loading…"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    TextButton(onClick = { open = false }) { Text("Close") }
                 }
-            },
-            modifier = Modifier.fillMaxWidth().height(460.dp),
-        )
+                HorizontalDivider()
+                AndroidView(
+                    factory = { context ->
+                        WebView(context).apply {
+                            settings.javaScriptEnabled = true
+                            webViewClient = WebViewClient()
+                            passkeysEnabled = enablePasskeys()
+                            loadUrl(SIGN_IN_URL)
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
     }
 }

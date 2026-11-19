@@ -222,7 +222,7 @@ The sample app running both modules against `:sample:server`:
 
 | Android — Auth Tab | iOS — web authentication session | Android — WebView |
 | :---: | :---: | :---: |
-| <img src="art/screenshots/android-auth-session.png" alt="Sign-in page open in an Android Auth Tab" width="240"/> | <img src="art/screenshots/ios-auth-session.png" alt="Sign-in page open in an iOS web authentication session sheet" width="240"/> | <img src="art/screenshots/android-webview.png" alt="Sample app showing a web page in a WebView with passkeys enabled" width="240"/> |
+| <img src="art/screenshots/android-auth-session.png" alt="Sign-in page open in an Android Auth Tab" width="240"/> | <img src="art/screenshots/ios-auth-session.png" alt="Sign-in page open in an iOS web authentication session sheet" width="240"/> | <img src="art/screenshots/android-webview.png" alt="The same sign-in page inside the app's own WebView with passkeys enabled" width="240"/> |
 
 ## Server (Relying Party)
 
@@ -287,8 +287,9 @@ passkeysSampleBundleId=com.your.app
 
 A browser demo lives in `:sample:web`.
 
-The sample's "Web sign-in" and WebView buttons talk to the local demo server, so start it
-first with `./gradlew :sample:server:run` (Android emulator or iOS simulator).
+The sample's "Web sign-in" and WebView buttons open the demo sign-in page from the local
+server. Start it with `./gradlew :sample:server:run`; on Android also forward the port with
+`adb reverse tcp:8080 tcp:8080`.
 
 ## Build & test
 
