@@ -6,6 +6,7 @@ private const val ATTACHMENT_MIN_OS_VERSION = "16.6"
 private const val LARGE_BLOB_MIN_OS_VERSION = "17.0"
 private const val PRF_MIN_OS_VERSION = "18.0"
 private const val EXCLUDED_CREDENTIALS_MIN_OS_VERSION = "17.4"
+private const val CONDITIONAL_REGISTRATION_MIN_OS_VERSION = "18.0"
 
 internal actual object ApplePasskeyPlatform {
     actual val displayName: String = "iOS"
@@ -17,6 +18,8 @@ internal actual object ApplePasskeyPlatform {
     actual fun supportsPrf(): Boolean = osAtLeast(PRF_MIN_OS_VERSION)
 
     actual fun supportsExcludedCredentials(): Boolean = osAtLeast(EXCLUDED_CREDENTIALS_MIN_OS_VERSION)
+
+    actual fun supportsConditionalRegistration(): Boolean = osAtLeast(CONDITIONAL_REGISTRATION_MIN_OS_VERSION)
 
     private fun osAtLeast(minimum: String): Boolean =
         UIDevice.currentDevice.systemVersion.isSemanticVersionAtLeast(minimum)

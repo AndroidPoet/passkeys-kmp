@@ -1,5 +1,7 @@
 package io.github.androidpoet.passkeys
 
+import android.view.View
+import io.github.androidpoet.passkeys.models.PasskeyAuthenticationOptions
 import io.github.androidpoet.passkeys.models.PasskeyAuthenticationResponse
 import io.github.androidpoet.passkeys.models.PasskeyCreationOptions
 import io.github.androidpoet.passkeys.models.PasskeyCreationResponse
@@ -131,6 +133,23 @@ class AndroidPasskeyClientTest {
         }
 
     @Test
+    fun test_authenticate_preferImmediatelyAvailableCredentials_isForwardedToProvider() =
+        runTest {
+            val provider = FakeAndroidCredentialProvider(authenticateResponse = authenticationResponseJson)
+            val client = AndroidPasskeyClient(provider)
+            val options =
+                PasskeyAuthenticationOptions(
+                    requestJson = """{"challenge":"aGVsbG8","rpId":"example.com"}""",
+                    preferImmediatelyAvailableCredentials = true,
+                )
+
+            val result = client.authenticate(options)
+
+            assertIs<PasskeyResult.Success<PasskeyAuthenticationResponse>>(result)
+            assertEquals(true, provider.receivedPreferImmediatelyAvailableCredentials)
+        }
+
+    @Test
     fun test_create_whenPayloadMalformed_returnsInvalidPayloadFailure() =
         runTest {
             val client = AndroidPasskeyClient(FakeAndroidCredentialProvider())
@@ -219,9 +238,18 @@ private class FakeAndroidCredentialProvider(
         return createResponse
     }
 
-    override suspend fun authenticate(requestJson: String): String {
+    override suspend fun authenticate(
+        requestJson: String,
+        preferImmediatelyAvailableCredentials: Boolean,
+    ): String {
         receivedAuthenticateRequestJson = requestJson
+        receivedPreferImmediatelyAvailableCredentials = preferImmediatelyAvailableCredentials
         authenticateError?.let { throw it }
         return authenticateResponse
     }
+
+    override suspend fun authenticateWithAutofill(
+        view: View,
+        requestJson: String,
+    ): String = authenticate(requestJson, preferImmediatelyAvailableCredentials = false)
 }

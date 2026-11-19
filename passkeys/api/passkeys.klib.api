@@ -15,14 +15,23 @@ abstract interface io.github.androidpoet.passkeys/PasskeyClient { // io.github.a
     open suspend fun create(kotlin/String): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyCreationResponse> // io.github.androidpoet.passkeys/PasskeyClient.create|create(kotlin.String){}[0]
 }
 
-final class io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions { // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions|null[0]
-    constructor <init>(kotlin/String) // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.<init>|<init>(kotlin.String){}[0]
+abstract interface io.github.androidpoet.passkeys/PasskeySignals { // io.github.androidpoet.passkeys/PasskeySignals|null[0]
+    abstract suspend fun allAcceptedCredentials(kotlin/String, kotlin/String, kotlin.collections/List<kotlin/String>): io.github.androidpoet.passkeys/PasskeyResult<kotlin/Unit> // io.github.androidpoet.passkeys/PasskeySignals.allAcceptedCredentials|allAcceptedCredentials(kotlin.String;kotlin.String;kotlin.collections.List<kotlin.String>){}[0]
+    abstract suspend fun currentUserDetails(kotlin/String, kotlin/String, kotlin/String, kotlin/String): io.github.androidpoet.passkeys/PasskeyResult<kotlin/Unit> // io.github.androidpoet.passkeys/PasskeySignals.currentUserDetails|currentUserDetails(kotlin.String;kotlin.String;kotlin.String;kotlin.String){}[0]
+    abstract suspend fun unknownCredential(kotlin/String, kotlin/String): io.github.androidpoet.passkeys/PasskeyResult<kotlin/Unit> // io.github.androidpoet.passkeys/PasskeySignals.unknownCredential|unknownCredential(kotlin.String;kotlin.String){}[0]
+}
 
+final class io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions { // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions|null[0]
+    constructor <init>(kotlin/String, kotlin/Boolean = ...) // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.<init>|<init>(kotlin.String;kotlin.Boolean){}[0]
+
+    final val preferImmediatelyAvailableCredentials // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.preferImmediatelyAvailableCredentials|{}preferImmediatelyAvailableCredentials[0]
+        final fun <get-preferImmediatelyAvailableCredentials>(): kotlin/Boolean // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.preferImmediatelyAvailableCredentials.<get-preferImmediatelyAvailableCredentials>|<get-preferImmediatelyAvailableCredentials>(){}[0]
     final val requestJson // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.requestJson|{}requestJson[0]
         final fun <get-requestJson>(): kotlin/String // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.requestJson.<get-requestJson>|<get-requestJson>(){}[0]
 
     final fun component1(): kotlin/String // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.component1|component1(){}[0]
-    final fun copy(kotlin/String = ...): io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.copy|copy(kotlin.String){}[0]
+    final fun component2(): kotlin/Boolean // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.component2|component2(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/Boolean = ...): io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.copy|copy(kotlin.String;kotlin.Boolean){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions.toString|toString(){}[0]
@@ -200,6 +209,7 @@ final class io.github.androidpoet.passkeys/IosPasskeyClient : io.github.androidp
 
     final suspend fun authenticate(io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyAuthenticationResponse> // io.github.androidpoet.passkeys/IosPasskeyClient.authenticate|authenticate(io.github.androidpoet.passkeys.models.PasskeyAuthenticationOptions){}[0]
     final suspend fun authenticate(kotlin/String): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyAuthenticationResponse> // io.github.androidpoet.passkeys/IosPasskeyClient.authenticate|authenticate(kotlin.String){}[0]
+    final suspend fun authenticateWithAutofill(io.github.androidpoet.passkeys.models/PasskeyAuthenticationOptions): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyAuthenticationResponse> // io.github.androidpoet.passkeys/IosPasskeyClient.authenticateWithAutofill|authenticateWithAutofill(io.github.androidpoet.passkeys.models.PasskeyAuthenticationOptions){}[0]
     final suspend fun create(io.github.androidpoet.passkeys.models/PasskeyCreationOptions): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyCreationResponse> // io.github.androidpoet.passkeys/IosPasskeyClient.create|create(io.github.androidpoet.passkeys.models.PasskeyCreationOptions){}[0]
     final suspend fun create(kotlin/String): io.github.androidpoet.passkeys/PasskeyResult<io.github.androidpoet.passkeys.models/PasskeyCreationResponse> // io.github.androidpoet.passkeys/IosPasskeyClient.create|create(kotlin.String){}[0]
 }

@@ -19,6 +19,7 @@ import platform.AuthenticationServices.ASAuthorizationPlatformPublicKeyCredentia
 import platform.AuthenticationServices.ASAuthorizationPlatformPublicKeyCredentialDescriptor
 import platform.AuthenticationServices.ASAuthorizationPlatformPublicKeyCredentialProvider
 import platform.AuthenticationServices.ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest
+import platform.AuthenticationServices.ASAuthorizationPlatformPublicKeyCredentialRegistrationRequestStyle
 import platform.AuthenticationServices.ASAuthorizationPublicKeyCredentialLargeBlobAssertionInput
 import platform.AuthenticationServices.ASAuthorizationPublicKeyCredentialLargeBlobAssertionOperation
 import platform.AuthenticationServices.ASAuthorizationPublicKeyCredentialLargeBlobRegistrationInput
@@ -26,6 +27,7 @@ import platform.AuthenticationServices.ASAuthorizationPublicKeyCredentialLargeBl
 import platform.AuthenticationServices.ASAuthorizationPublicKeyCredentialPRFAssertionInput
 import platform.AuthenticationServices.ASAuthorizationPublicKeyCredentialPRFAssertionInputValues
 import platform.AuthenticationServices.ASAuthorizationPublicKeyCredentialPRFRegistrationInput
+import platform.AuthenticationServices.ASAuthorizationRequest
 import platform.AuthenticationServices.ASAuthorizationWebBrowserPlatformPublicKeyCredentialRegistrationRequestProtocol
 import platform.AuthenticationServices.ASPresentationAnchor
 import platform.Foundation.NSData
@@ -52,27 +54,34 @@ internal class ApplePasskeyClient(
     override suspend fun create(options: PasskeyCreationOptions): PasskeyResult<PasskeyCreationResponse> =
         passkeyResult {
             val nativeOptions = PasskeyPayloadMapper.nativeCreationOptions(options.requestJson)
-            val request = registrationRequest(nativeOptions)
-            ApplePasskeyResponses.registration(run(request))
+            val request = registrationRequest(nativeOptions, conditional = options.isConditionalCreateRequest)
+            ApplePasskeyResponses.registration(run(request, requestPerformer(options.preferImmediatelyAvailableCredentials)))
         }
 
     override suspend fun authenticate(
         options: PasskeyAuthenticationOptions,
     ): PasskeyResult<PasskeyAuthenticationResponse> =
+        authenticate(options, requestPerformer(options.preferImmediatelyAvailableCredentials))
+
+    /** Runs an assertion ceremony started by [perform] (modal sheet, immediate-only, or AutoFill-assisted). */
+    internal suspend fun authenticate(
+        options: PasskeyAuthenticationOptions,
+        perform: (ASAuthorizationController) -> Unit,
+    ): PasskeyResult<PasskeyAuthenticationResponse> =
         passkeyResult {
             val nativeOptions = PasskeyPayloadMapper.nativeAuthenticationOptions(options.requestJson)
             val request = assertionRequest(nativeOptions)
-            ApplePasskeyResponses.assertion(run(request))
+            ApplePasskeyResponses.assertion(run(request, perform))
         }
 
-    private suspend fun run(request: ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest) =
-        PasskeyAuthorizationController(ASAuthorizationController(authorizationRequests = listOf(request)), anchor).run()
+    private suspend fun run(
+        request: ASAuthorizationRequest,
+        perform: (ASAuthorizationController) -> Unit,
+    ) = PasskeyAuthorizationController(ASAuthorizationController(authorizationRequests = listOf(request)), anchor, perform).run()
 
-    private suspend fun run(request: ASAuthorizationPlatformPublicKeyCredentialAssertionRequest) =
-        PasskeyAuthorizationController(ASAuthorizationController(authorizationRequests = listOf(request)), anchor).run()
-
-    private fun registrationRequest(
+    internal fun registrationRequest(
         nativeOptions: NativeCreationOptions,
+        conditional: Boolean = false,
     ): ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest {
         requireSupported(nativeOptions.authenticatorSelection?.authenticatorAttachment != "cross-platform") {
             "only platform passkeys are supported on ${ApplePasskeyPlatform.displayName}; cross-platform (security key) requests are not"
@@ -98,6 +107,15 @@ internal class ApplePasskeyClient(
                 nativeOptions.excludeCredentials.map {
                     ASAuthorizationPlatformPublicKeyCredentialDescriptor(credentialID = it.id.toNSData())
                 }
+        }
+        if (conditional) {
+            // The counterpart of Credential Manager's conditional create: the
+            // credential manager adds the passkey silently after a password
+            // sign-in, or the request fails without showing any UI.
+            requireFeature(ApplePasskeyPlatform.supportsConditionalRegistration(), "conditional registration")
+            request.requestStyle =
+                ASAuthorizationPlatformPublicKeyCredentialRegistrationRequestStyle
+                    .ASAuthorizationPlatformPublicKeyCredentialRegistrationRequestStyleConditional
         }
         nativeOptions.extensions?.largeBlob?.support?.let { support ->
             requireFeature(ApplePasskeyPlatform.supportsLargeBlob(), "largeBlob registration")

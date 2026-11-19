@@ -21,6 +21,9 @@ internal expect object ApplePasskeyPlatform {
 
     /** Whether `excludeCredentials` can be forwarded (iOS 17.4+ / macOS 13.5+). */
     fun supportsExcludedCredentials(): Boolean
+
+    /** Whether a conditional (silent) registration can be requested (iOS 18+ / macOS 15+). */
+    fun supportsConditionalRegistration(): Boolean
 }
 
 /**

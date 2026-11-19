@@ -28,6 +28,11 @@ class NSErrorMappingTest {
     }
 
     @Test
+    fun test_deviceNotConfiguredCodeMapsToUnsupported() {
+        assertIs<PasskeyException.Unsupported>(errorWithCode(1010).toPasskeyException())
+    }
+
+    @Test
     fun test_sameCodeInAnotherDomainIsNotInterpreted() {
         val foreign = NSError.errorWithDomain(domain = "NSURLErrorDomain", code = 1001, userInfo = null)
         assertIs<PasskeyException.Unexpected>(foreign.toPasskeyException())

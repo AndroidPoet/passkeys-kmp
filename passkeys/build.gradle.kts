@@ -52,6 +52,7 @@ kotlin {
         androidMain.dependencies {
             api(libs.androidx.credentials)
             implementation(libs.androidx.credentials.play.services.auth)
+            implementation(libs.kotlinx.coroutines.android)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -21,9 +21,15 @@ public data class PasskeyCreationOptions(
  *
  * @property requestJson the WebAuthn `PublicKeyCredentialRequestOptions` JSON
  *   produced by your server, including a fresh challenge.
+ * @property preferImmediatelyAvailableCredentials when `true`, show the sign-in
+ *   sheet only if a passkey is available on this device right now, and fail
+ *   without any UI otherwise — for offering passkey sign-in as soon as a screen
+ *   opens. Honoured on Android, iOS and macOS. Android reports the miss as
+ *   `NoCredential`; Apple platforms report it as `UserCanceled`.
  */
 public data class PasskeyAuthenticationOptions(
     public val requestJson: String,
+    public val preferImmediatelyAvailableCredentials: Boolean = false,
 )
 
 /**

@@ -5,6 +5,7 @@ import platform.AuthenticationServices.ASAuthorization
 import platform.AuthenticationServices.ASAuthorizationController
 import platform.AuthenticationServices.ASAuthorizationControllerDelegateProtocol
 import platform.AuthenticationServices.ASAuthorizationControllerPresentationContextProvidingProtocol
+import platform.AuthenticationServices.ASAuthorizationControllerRequestOptionPreferImmediatelyAvailableCredentials
 import platform.AuthenticationServices.ASAuthorizationCredentialProtocol
 import platform.AuthenticationServices.ASPresentationAnchor
 import platform.Foundation.NSError
@@ -27,6 +28,7 @@ import kotlin.coroutines.resumeWithException
 internal class PasskeyAuthorizationController(
     private val controller: ASAuthorizationController,
     anchor: () -> ASPresentationAnchor,
+    private val perform: (ASAuthorizationController) -> Unit = { it.performRequests() },
 ) {
     private val presentationProvider =
         object : NSObject(), ASAuthorizationControllerPresentationContextProvidingProtocol {
@@ -73,6 +75,19 @@ internal class PasskeyAuthorizationController(
                     if (!completed) controller.cancel()
                 }
             }
-            dispatch_async(dispatch_get_main_queue()) { controller.performRequests() }
+            dispatch_async(dispatch_get_main_queue()) { perform(controller) }
         }
 }
+
+/**
+ * How a ceremony is started: the standard modal sheet, or — when
+ * [preferImmediatelyAvailableCredentials] is set — a sheet shown only if this
+ * device can fulfil the request right now (otherwise the delegate gets an
+ * error and no UI appears).
+ */
+internal fun requestPerformer(preferImmediatelyAvailableCredentials: Boolean): (ASAuthorizationController) -> Unit =
+    if (preferImmediatelyAvailableCredentials) {
+        { it.performRequestsWithOptions(ASAuthorizationControllerRequestOptionPreferImmediatelyAvailableCredentials) }
+    } else {
+        { it.performRequests() }
+    }
