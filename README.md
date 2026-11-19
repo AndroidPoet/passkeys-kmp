@@ -62,18 +62,11 @@ when (val result = passkeys.create(registrationOptionsJson)) {   // or .authenti
 | Windows 10 1903+ | Windows Hello / security key | `HWND` | — |
 | Linux | Roaming USB/NFC key only | — | `libfido2` + udev rules |
 
-<details>
-<summary><b>📸 See the native authenticator on each platform</b></summary>
-
-<br/>
-
 Same shared `create` call, each platform's own native authenticator UI:
 
 | Android — Credential Manager | macOS — Touch ID | Browser (Wasm) |
 | :---: | :---: | :---: |
 | <img src="art/screenshots/android.png" alt="Android Credential Manager passkey sheet" width="240"/> | <img src="art/screenshots/macos.png" alt="macOS Touch ID save-passkey dialog" width="320"/> | <img src="art/screenshots/web.png" alt="Browser passkey dialog" width="320"/> |
-
-</details>
 
 ## Domain setup
 
@@ -225,18 +218,11 @@ if (!webView.enablePasskeys()) { /* WebView too old: offer another sign-in path 
 The page's domain must list the app in its Digital Asset Links. iOS needs no
 equivalent: `WKWebView` supports passkeys for the app's Associated Domains.
 
-<details>
-<summary><b>Screenshots</b></summary>
-
-<br/>
-
 The sample app running both modules against `:sample:server`:
 
 | Android — Auth Tab | iOS — web authentication session | Android — WebView |
 | :---: | :---: | :---: |
 | <img src="art/screenshots/android-auth-session.png" alt="Sign-in page open in an Android Auth Tab" width="240"/> | <img src="art/screenshots/ios-auth-session.png" alt="Sign-in page open in an iOS web authentication session sheet" width="240"/> | <img src="art/screenshots/android-webview.png" alt="Sample app showing a web page in a WebView with passkeys enabled" width="240"/> |
-
-</details>
 
 ## Server (Relying Party)
 
