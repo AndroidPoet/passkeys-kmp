@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in — passkeys-kmp sample</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; margin: 0; padding: 32px 24px; color: #1b1b1f; background: #fafafa; }
+    h1 { font-size: 24px; margin: 0 0 8px; }
+    p { color: #5a5a66; margin: 0 0 24px; }
+    a.button { display: block; text-align: center; padding: 14px; border-radius: 12px; background: #1b1b1f; color: #fff; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Sign in</h1>
+  <p>Stand-in for your web sign-in page or identity provider. A real page runs its passkey
+     prompt here, then redirects back to the app with an authorization code.</p>
+  <a class="button" href="passkeys-sample://callback?code=demo-code">Continue to the app</a>
+</body>
+</html>

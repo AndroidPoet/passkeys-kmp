@@ -225,6 +225,19 @@ if (!webView.enablePasskeys()) { /* WebView too old: offer another sign-in path 
 The page's domain must list the app in its Digital Asset Links. iOS needs no
 equivalent: `WKWebView` supports passkeys for the app's Associated Domains.
 
+<details>
+<summary><b>Screenshots</b></summary>
+
+<br/>
+
+The sample app running both modules against `:sample:server`:
+
+| Android — Auth Tab | iOS — web authentication session | Android — WebView |
+| :---: | :---: | :---: |
+| <img src="art/screenshots/android-auth-session.png" alt="Sign-in page open in an Android Auth Tab" width="240"/> | <img src="art/screenshots/ios-auth-session.png" alt="Sign-in page open in an iOS web authentication session sheet" width="240"/> | <img src="art/screenshots/android-webview.png" alt="Sample app showing a web page in a WebView with passkeys enabled" width="240"/> |
+
+</details>
+
 ## Server (Relying Party)
 
 For a Kotlin/JVM backend, `passkeys-server` is the matching server half. It wraps
@@ -287,6 +300,9 @@ passkeysSampleBundleId=com.your.app
 ```
 
 A browser demo lives in `:sample:web`.
+
+The sample's "Web sign-in" and WebView buttons talk to the local demo server, so start it
+first with `./gradlew :sample:server:run` (Android emulator or iOS simulator).
 
 ## Build & test
 

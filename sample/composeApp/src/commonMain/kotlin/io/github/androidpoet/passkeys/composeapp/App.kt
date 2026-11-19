@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -41,7 +42,12 @@ fun App(rpId: String = RP_ID) {
             var busy by remember { mutableStateOf(false) }
 
             Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .safeDrawingPadding()
+                        .verticalScroll(rememberScrollState())
+                        .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text("Passkeys KMP", style = MaterialTheme.typography.headlineMedium)
@@ -85,6 +91,27 @@ fun App(rpId: String = RP_ID) {
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Authenticate") }
+
+                rememberWebSignIn()?.let { webSignIn ->
+                    Button(
+                        onClick = {
+                            busy = true
+                            status = "Opening the web sign-in page…"
+                            scope.launch {
+                                status =
+                                    when (val r = webSignIn()) {
+                                        is PasskeyResult.Success -> "✅ Web sign-in returned\n\n${r.value}"
+                                        is PasskeyResult.Failure -> "❌ ${r.error.message} (${r.error.code})"
+                                    }
+                                busy = false
+                            }
+                        },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Web sign-in (auth session)") }
+                }
+
+                PlatformDemos()
             }
         }
     }

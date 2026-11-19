@@ -79,8 +79,13 @@ kotlin {
             }
         }
         androidMain.dependencies {
+            implementation(project(":passkeys-auth-session"))
+            implementation(project(":passkeys-webview"))
             implementation(libs.androidx.activity.compose)
             implementation(libs.kotlinx.coroutines.android)
+        }
+        iosMain.dependencies {
+            implementation(project(":passkeys-auth-session"))
         }
         val desktopMain by getting {
             dependencies {
@@ -92,7 +97,8 @@ kotlin {
 
 android {
     namespace = "io.github.androidpoet.passkeys.composeapp"
-    compileSdk = Configuration.COMPILE_SDK
+    // passkeys-auth-session (androidx.browser 1.9) requires compileSdk 36.
+    compileSdk = Configuration.AUTH_SESSION_COMPILE_SDK
 
     // Optional dedicated test keystore (shared with :sample:android). Its SHA-256
     // must be published in your relying party's assetlinks.json.
