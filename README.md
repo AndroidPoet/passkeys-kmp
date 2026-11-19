@@ -135,94 +135,66 @@ keys via libfido2. Requires `libfido2-dev` / `libfido2-devel` and udev rules gra
 access. Platform and phone/hybrid passkeys fail with a typed `PasskeyException`.
 </details>
 
-## Sign-in without a button
+## More ways to sign in
 
-Two ways to offer a passkey before the user asks for one. Both are honoured on
-Android and iOS (the immediate option on macOS too).
+Each one is optional. Full details are in the [usage guide](https://androidpoet.github.io/passkeys-kmp/usage).
 
-**Immediate** — show the sheet only if a passkey is on this device right now,
-otherwise fail silently (Android: `NoCredential`, iOS / macOS: `UserCanceled`):
+### Web sign-in
+
+Already have a sign-in page on your website, or use OAuth? Open it in the
+system sign-in browser and get the redirect back. Needs `passkeys-auth-session`.
+
+```kotlin
+val session = AndroidWebAuthSession(activity)   // iOS: IosWebAuthSession(window)
+
+val result = session.authenticate(
+    url = "https://example.com/sign-in",
+    redirect = WebAuthRedirect.CustomScheme("myapp"),   // page ends on myapp://...
+)
+```
+
+`result` holds the redirect URL. Android needs Chrome 137+ and compileSdk 36.
+
+### WebView (Android)
+
+Showing your own web page in a `WebView`? One line lets it use passkeys.
+Needs `passkeys-webview`.
+
+```kotlin
+webView.enablePasskeys()   // false if the WebView is too old
+```
+
+| Android — web sign-in | iOS — web sign-in | Android — WebView |
+| :---: | :---: | :---: |
+| <img src="art/screenshots/android-auth-session.png" alt="Sign-in page open in an Android Auth Tab" width="240"/> | <img src="art/screenshots/ios-auth-session.png" alt="Sign-in page open in an iOS web authentication session sheet" width="240"/> | <img src="art/screenshots/android-webview.png" alt="The same sign-in page inside the app's own WebView with passkeys enabled" width="240"/> |
+
+### Sign in without a button
+
+Show the passkey sheet only if this device already has a passkey:
 
 ```kotlin
 passkeys.authenticate(PasskeyAuthenticationOptions(optionsJson, preferImmediatelyAvailableCredentials = true))
 ```
 
-**Keyboard autofill** — list passkeys in the keyboard's suggestions for the
-username field. The call suspends until the user picks one, so launch it when
-the screen opens and cancel it when the screen closes:
+Or offer passkeys in the keyboard suggestions of the username field:
 
 ```kotlin
 AndroidPasskeyClient(activity).authenticateWithAutofill(usernameView, options)   // Android 15+
-IosPasskeyClient(window).authenticateWithAutofill(options)                       // field content type: username
+IosPasskeyClient(window).authenticateWithAutofill(options)
 ```
 
-## Keeping passkeys in sync (signals)
+### Keep passkeys in sync
 
-`PasskeySignals` tells the passkey provider what your server knows, so deleted
-or renamed passkeys stop showing up at sign-in. Signals show no UI and are safe
-to ignore when they fail.
+Tell the user's passkey manager when a passkey was deleted or renamed on your
+server, so it stops offering stale ones (Android 15+):
 
 ```kotlin
-val signals: PasskeySignals = AndroidPasskeySignals(context)          // Android 15+
+val signals = AndroidPasskeySignals(context)
 
-signals.unknownCredential(rpId, credentialId)                         // sign-in failed: passkey deleted server-side
-signals.allAcceptedCredentials(rpId, userId, acceptedCredentialIds)   // after sign-in
-signals.currentUserDetails(rpId, userId, name, displayName)           // after a rename
+signals.unknownCredential(rpId, credentialId)                         // passkey no longer exists
+signals.allAcceptedCredentials(rpId, userId, acceptedCredentialIds)   // the full valid list
+signals.currentUserDetails(rpId, userId, name, displayName)           // user was renamed
 ```
-
-On iOS / macOS 26.2+ the system API (`ASCredentialDataManager`) is Swift-only,
-so the library cannot call it from Kotlin: implement `PasskeySignals` in Swift
-in your app. The [usage guide](https://androidpoet.github.io/passkeys-kmp/usage)
-has the snippet.
-
-## Web sign-in (Auth Tab and WebView)
-
-`PasskeyClient` is the native route. Two optional modules cover the other two
-ways an app can use passkeys.
-
-**`passkeys-auth-session`** — run your existing web sign-in page, or an
-OAuth / OIDC provider, in the system authentication browser. The page shows its
-own passkey prompt; the app gets the redirect back.
-
-```kotlin
-val session: WebAuthSession = AndroidWebAuthSession(activity)   // iOS: IosWebAuthSession(window)
-
-when (val result = session.authenticate(
-    url = "https://example.com/oauth/authorize?...",
-    redirect = WebAuthRedirect.Https(host = "example.com", path = "/auth/callback"),
-)) {
-    is PasskeyResult.Success -> exchangeCode(result.value)   // the full redirect URL
-    is PasskeyResult.Failure -> handle(result.error)
-}
-```
-
-| | Android | iOS |
-| --- | --- | --- |
-| Backed by | Auth Tab (`androidx.browser` 1.9) | `ASWebAuthenticationSession` |
-| `WebAuthRedirect.Https` | needs Digital Asset Links on the redirect host | iOS 17.4+, needs Associated Domains |
-| `WebAuthRedirect.CustomScheme` | no domain setup | no domain setup |
-| Build requirement | compileSdk 36, AGP 8.9.1+ | — |
-
-On Android the session needs a browser with Auth Tab support (Chrome 137+). On
-any other browser the same intent opens a plain Custom Tab, which cannot hand
-the redirect back: the call ends as `UserCanceled` once the user closes it. It
-ends as `Interrupted` if the activity is destroyed while the browser is open.
-
-**`passkeys-webview`** (Android) — let a first-party page inside your own
-`WebView` use passkeys through `navigator.credentials`:
-
-```kotlin
-if (!webView.enablePasskeys()) { /* WebView too old: offer another sign-in path */ }
-```
-
-The page's domain must list the app in its Digital Asset Links. iOS needs no
-equivalent: `WKWebView` supports passkeys for the app's Associated Domains.
-
-The sample app running both modules against `:sample:server`:
-
-| Android — Auth Tab | iOS — web authentication session | Android — WebView |
-| :---: | :---: | :---: |
-| <img src="art/screenshots/android-auth-session.png" alt="Sign-in page open in an Android Auth Tab" width="240"/> | <img src="art/screenshots/ios-auth-session.png" alt="Sign-in page open in an iOS web authentication session sheet" width="240"/> | <img src="art/screenshots/android-webview.png" alt="The same sign-in page inside the app's own WebView with passkeys enabled" width="240"/> |
 
 ## Server (Relying Party)
 
